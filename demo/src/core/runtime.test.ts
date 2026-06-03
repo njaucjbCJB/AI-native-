@@ -39,4 +39,63 @@ describe('Runtime request submission', () => {
     await expect(storage.getRequestInstances()).resolves.toEqual([result.request])
     await expect(storage.getWorkflowInstances()).resolves.toEqual([result.workflow])
   })
+
+  it('records skill activity in storage when a runtime request is submitted', async () => {
+    const storage = new LocalStorageAdapter(new MemoryStorage())
+    const blueprint = generateBlueprintFromRequirement('I need a procurement approval workflow.')
+
+    await storage.saveBlueprint(blueprint)
+    await storage.setActiveBlueprint(blueprint.id)
+
+    await submitRuntimeRequest(
+      storage,
+      {
+        itemName: 'Security audit',
+        department: 'Engineering',
+        amount: 12000,
+        vendor: 'Unknown Vendor',
+        neededBy: '2026-07-01',
+        reason: 'Run a security audit before the next enterprise customer launch.',
+      },
+      {
+        requestId: () => 'request-runtime-1',
+        activityId: createSequentialIds('activity-risk-1', 'activity-routing-1'),
+        activityNow: createSequentialDates(
+          new Date('2026-06-03T13:05:00.000Z'),
+          new Date('2026-06-03T13:06:00.000Z'),
+        ),
+      },
+    )
+
+    await expect(storage.getAgentActivities()).resolves.toEqual([
+      {
+        id: 'activity-risk-1',
+        skillName: 'RiskAnalysisSkill',
+        inputSummary: 'request request-runtime-1',
+        outputSummary: 'high risk with 2 matched rule(s)',
+        status: 'success',
+        createdAt: '2026-06-03T13:05:00.000Z',
+      },
+      {
+        id: 'activity-routing-1',
+        skillName: 'ApprovalRoutingSkill',
+        inputSummary: 'request request-runtime-1 with high risk',
+        outputSummary: '3 approval step(s)',
+        status: 'success',
+        createdAt: '2026-06-03T13:06:00.000Z',
+      },
+    ])
+  })
 })
+
+function createSequentialIds(...ids: string[]) {
+  let index = 0
+
+  return () => ids[index++] ?? ids.at(-1) ?? 'activity'
+}
+
+function createSequentialDates(...dates: Date[]) {
+  let index = 0
+
+  return () => dates[index++] ?? dates.at(-1) ?? new Date('2026-06-03T00:00:00.000Z')
+}

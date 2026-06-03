@@ -4,6 +4,7 @@ import { routeApproval, type ApprovalStep } from './approval-routing'
 import { analyzeProcurementRisk, type RiskAnalysisResult } from './risk'
 import {
   approveCurrentStep,
+  rejectCurrentStep,
   type WorkflowInstance,
 } from './workflow'
 
@@ -28,6 +29,10 @@ type AgentActivityOptions = {
   now?: () => Date
 }
 
+type RiskAnalysisSkillOptions = AgentActivityOptions & {
+  previousRequests?: RequestInstance[]
+}
+
 type ArchiveSkillOptions = AgentActivityOptions & {
   activityId?: () => string
 }
@@ -35,9 +40,11 @@ type ArchiveSkillOptions = AgentActivityOptions & {
 export async function runRiskAnalysisSkill(
   storage: AgentActivityStorage,
   request: RequestInstance,
-  options: AgentActivityOptions = {},
+  options: RiskAnalysisSkillOptions = {},
 ): Promise<RiskAnalysisResult> {
-  const result = analyzeProcurementRisk(request)
+  const result = analyzeProcurementRisk(request, {
+    previousRequests: options.previousRequests,
+  })
 
   await storage.saveAgentActivity({
     id: getId(options),
@@ -79,6 +86,30 @@ export async function runApproveCurrentStep(
 ): Promise<WorkflowInstance> {
   const currentStepId = workflow.currentStep?.id ?? 'none'
   const nextWorkflow = approveCurrentStep(workflow, {
+    comment: action.comment,
+    now: options.now,
+  })
+
+  await storage.saveAgentActivity({
+    id: getId(options),
+    skillName: 'WorkflowExecutionSkill',
+    inputSummary: `request ${workflow.requestId} at ${currentStepId}`,
+    outputSummary: nextWorkflow.status,
+    status: 'success',
+    createdAt: getTimestamp(options),
+  })
+
+  return nextWorkflow
+}
+
+export async function runRejectCurrentStep(
+  storage: AgentActivityStorage,
+  workflow: WorkflowInstance,
+  action: { comment?: string },
+  options: AgentActivityOptions = {},
+): Promise<WorkflowInstance> {
+  const currentStepId = workflow.currentStep?.id ?? 'none'
+  const nextWorkflow = rejectCurrentStep(workflow, {
     comment: action.comment,
     now: options.now,
   })

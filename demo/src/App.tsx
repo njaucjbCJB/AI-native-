@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { approveCurrentStep, rejectCurrentStep, type WorkflowInstance } from './core/workflow'
+import { runApproveCurrentStep, runRejectCurrentStep, type AgentActivity } from './core/agent-activity'
+import type { WorkflowInstance } from './core/workflow'
 import { generateBlueprintFromRequirement, type Blueprint, type FormField } from './core/blueprint'
 import { LocalStorageAdapter } from './core/storage'
 import { submitRuntimeRequest, type RuntimeSubmissionResult } from './core/runtime'
@@ -31,6 +32,7 @@ function App() {
   const [formData, setFormData] = useState<RequestData>(INITIAL_FORM_DATA)
   const [requests, setRequests] = useState<RequestInstance[]>([])
   const [workflows, setWorkflows] = useState<WorkflowInstance[]>([])
+  const [agentActivities, setAgentActivities] = useState<AgentActivity[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
   const [message, setMessage] = useState('Runtime ready')
@@ -42,8 +44,7 @@ function App() {
       await storage.saveBlueprint(defaultBlueprint)
       await storage.setActiveBlueprint(defaultBlueprint.id)
       setBlueprint(defaultBlueprint)
-      setRequests(await storage.getRequestInstances())
-      setWorkflows(await storage.getWorkflowInstances())
+      await refreshRuntimeState()
     }
 
     void initializeRuntime()
@@ -56,8 +57,7 @@ function App() {
       const result = await submitRuntimeRequest(storage, formData)
 
       setLatestResult(result)
-      setRequests(await storage.getRequestInstances())
-      setWorkflows(await storage.getWorkflowInstances())
+      await refreshRuntimeState()
       setMessage(`Submitted ${result.request.id}`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Submit failed')
@@ -74,12 +74,24 @@ function App() {
 
     const nextWorkflow =
       decision === 'approve'
-        ? approveCurrentStep(workflow, { comment: `${ROLE_LABELS[selectedRole]} approved.` })
-        : rejectCurrentStep(workflow, { comment: `${ROLE_LABELS[selectedRole]} rejected.` })
+        ? await runApproveCurrentStep(storage, workflow, { comment: `${ROLE_LABELS[selectedRole]} approved.` })
+        : await runRejectCurrentStep(storage, workflow, { comment: `${ROLE_LABELS[selectedRole]} rejected.` })
 
     await storage.saveWorkflowInstance(nextWorkflow)
-    setWorkflows(await storage.getWorkflowInstances())
+    await refreshRuntimeState()
     setMessage(`${ROLE_LABELS[selectedRole]} ${decision === 'approve' ? 'approved' : 'rejected'} ${workflow.requestId}`)
+  }
+
+  async function refreshRuntimeState() {
+    const [nextRequests, nextWorkflows, nextAgentActivities] = await Promise.all([
+      storage.getRequestInstances(),
+      storage.getWorkflowInstances(),
+      storage.getAgentActivities(),
+    ])
+
+    setRequests(nextRequests)
+    setWorkflows(nextWorkflows)
+    setAgentActivities(nextAgentActivities)
   }
 
   function updateField(field: FormField, value: string) {
@@ -194,6 +206,41 @@ function App() {
             <p className="risk-reasons">提交申请后会显示风险原因和审批路径。</p>
           )}
         </section>
+
+        <section className="panel activity-panel">
+          <div className="panel-heading">
+            <h2>Agent Activity</h2>
+            <span>{agentActivities.length} records</span>
+          </div>
+          <div className="activity-list">
+            {agentActivities.length ? (
+              agentActivities.slice().reverse().map((activity) => (
+                <article className="activity-item" key={activity.id}>
+                  <div className="activity-title">
+                    <strong>{activity.skillName}</strong>
+                    <span className={activity.status}>{activity.status}</span>
+                  </div>
+                  <dl>
+                    <div>
+                      <dt>Input</dt>
+                      <dd>{activity.inputSummary}</dd>
+                    </div>
+                    <div>
+                      <dt>Output</dt>
+                      <dd>{activity.outputSummary}</dd>
+                    </div>
+                    <div>
+                      <dt>Time</dt>
+                      <dd>{formatActivityTime(activity.createdAt)}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))
+            ) : (
+              <p className="empty-state">提交或推进申请后，这里会显示底层 Skill 调用记录。</p>
+            )}
+          </div>
+        </section>
       </section>
     </main>
   )
@@ -243,6 +290,16 @@ function Metric({ label, value }: { label: string; value: string | number }) {
       <strong>{value}</strong>
     </div>
   )
+}
+
+function formatActivityTime(value: string) {
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(value))
 }
 
 export default App

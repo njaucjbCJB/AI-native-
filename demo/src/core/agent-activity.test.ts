@@ -3,6 +3,7 @@ import {
   runApprovalRoutingSkill,
   runApproveCurrentStep,
   runArchiveSkill,
+  runRejectCurrentStep,
   runRiskAnalysisSkill,
 } from './agent-activity'
 import type { RiskAnalysisResult } from './risk'
@@ -98,6 +99,48 @@ describe('Agent Activity', () => {
         outputSummary: 'approved',
         status: 'success',
         createdAt: '2026-06-03T14:15:00.000Z',
+      },
+    ])
+  })
+
+  it('records activity when a workflow rejection action runs', async () => {
+    const storage = new LocalStorageAdapter(new MemoryStorage())
+    const request = createRequest()
+    const workflow = startWorkflow(
+      request,
+      [
+        {
+          id: 'department-manager-approval',
+          role: 'department_manager',
+          name: 'Department Manager Approval',
+        },
+      ],
+      {
+        now: () => new Date('2026-06-03T14:10:00.000Z'),
+      },
+    )
+
+    const rejectedWorkflow = await runRejectCurrentStep(
+      storage,
+      workflow,
+      {
+        comment: 'Rejected.',
+      },
+      {
+        id: () => 'activity-4',
+        now: () => new Date('2026-06-03T14:16:00.000Z'),
+      },
+    )
+
+    expect(rejectedWorkflow.status).toBe('rejected')
+    await expect(storage.getAgentActivities()).resolves.toEqual([
+      {
+        id: 'activity-4',
+        skillName: 'WorkflowExecutionSkill',
+        inputSummary: 'request request-1 at department-manager-approval',
+        outputSummary: 'rejected',
+        status: 'success',
+        createdAt: '2026-06-03T14:16:00.000Z',
       },
     ])
   })

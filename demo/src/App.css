@@ -210,6 +210,72 @@ textarea {
   padding: 10px 12px;
 }
 
+.activity-panel {
+  grid-column: 2;
+}
+
+.activity-list {
+  display: grid;
+  gap: 10px;
+}
+
+.activity-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.activity-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.activity-title span {
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  padding: 3px 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.activity-title span.failed {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.activity-item dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.activity-item dl > div {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 8px;
+}
+
+.activity-item dt {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.activity-item dd,
+.empty-state {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+}
+
 @media (max-width: 860px) {
   .runtime-header,
   .request-item {
@@ -220,6 +286,10 @@ textarea {
   .runtime-grid,
   .summary-row {
     grid-template-columns: 1fr;
+  }
+
+  .activity-panel {
+    grid-column: auto;
   }
 
   .request-item > div:last-child {
