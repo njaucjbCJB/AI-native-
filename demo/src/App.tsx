@@ -7,6 +7,7 @@ import { LocalStorageAdapter } from './core/storage'
 import { submitRuntimeRequest, type RuntimeSubmissionResult } from './core/runtime'
 import type { ApprovalRole } from './core/approval-routing'
 import type { RequestData, RequestInstance } from './core/request'
+import { generateReportFromRuntimeStorage, type ReportSnapshot } from './core/report'
 import './App.css'
 
 const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
@@ -33,6 +34,7 @@ function App() {
   const [requests, setRequests] = useState<RequestInstance[]>([])
   const [workflows, setWorkflows] = useState<WorkflowInstance[]>([])
   const [agentActivities, setAgentActivities] = useState<AgentActivity[]>([])
+  const [reports, setReports] = useState<ReportSnapshot[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
   const [message, setMessage] = useState('Runtime ready')
@@ -57,6 +59,7 @@ function App() {
       const result = await submitRuntimeRequest(storage, formData)
 
       setLatestResult(result)
+      await generateReportFromRuntimeStorage(storage)
       await refreshRuntimeState()
       setMessage(`Submitted ${result.request.id}`)
     } catch (error) {
@@ -78,20 +81,23 @@ function App() {
         : await runRejectCurrentStep(storage, workflow, { comment: `${ROLE_LABELS[selectedRole]} rejected.` })
 
     await storage.saveWorkflowInstance(nextWorkflow)
+    await generateReportFromRuntimeStorage(storage)
     await refreshRuntimeState()
     setMessage(`${ROLE_LABELS[selectedRole]} ${decision === 'approve' ? 'approved' : 'rejected'} ${workflow.requestId}`)
   }
 
   async function refreshRuntimeState() {
-    const [nextRequests, nextWorkflows, nextAgentActivities] = await Promise.all([
+    const [nextRequests, nextWorkflows, nextAgentActivities, nextReports] = await Promise.all([
       storage.getRequestInstances(),
       storage.getWorkflowInstances(),
       storage.getAgentActivities(),
+      storage.getReportSnapshots(),
     ])
 
     setRequests(nextRequests)
     setWorkflows(nextWorkflows)
     setAgentActivities(nextAgentActivities)
+    setReports(nextReports)
   }
 
   function updateField(field: FormField, value: string) {
@@ -207,6 +213,8 @@ function App() {
           )}
         </section>
 
+        <ReportsPanel report={reports.at(-1) ?? null} />
+
         <section className="panel activity-panel">
           <div className="panel-heading">
             <h2>Agent Activity</h2>
@@ -243,6 +251,36 @@ function App() {
         </section>
       </section>
     </main>
+  )
+}
+
+function ReportsPanel({ report }: { report: ReportSnapshot | null }) {
+  return (
+    <section className="panel reports-panel">
+      <div className="panel-heading">
+        <h2>Reports</h2>
+        <span>AI CEO summary</span>
+      </div>
+      <div className="summary-row report-metrics">
+        <Metric label="Total Amount" value={formatMoney(report?.totalAmount ?? 0)} />
+        <Metric label="High Risk" value={report?.highRiskRequestCount ?? 0} />
+        <Metric
+          label="Avg Cycle"
+          value={`${formatNumber(report?.averageApprovalCycleTimeHours ?? 0)}h`}
+        />
+      </div>
+      <div className="status-distribution">
+        {Object.entries(report?.requestCountByStatus ?? { submitted: 0 }).map(([status, count]) => (
+          <div key={status}>
+            <span>{status}</span>
+            <strong>{count}</strong>
+          </div>
+        ))}
+      </div>
+      <p className="ceo-summary">
+        {report?.summary ?? '提交采购申请后，系统会生成面向管理层的 AI CEO 摘要。'}
+      </p>
+    </section>
   )
 }
 
@@ -300,6 +338,20 @@ function formatActivityTime(value: string) {
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date(value))
+}
+
+function formatMoney(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 0,
+    style: 'currency',
+    currency: 'USD',
+  }).format(value)
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 1,
+  }).format(value)
 }
 
 export default App

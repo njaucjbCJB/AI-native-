@@ -1,5 +1,6 @@
 import type { AgentActivity } from './agent-activity'
 import type { RequestInstance } from './request'
+import { analyzeProcurementRisk } from './risk'
 import type { RiskAnalysisResult } from './risk'
 import type { WorkflowStatus } from './workflow'
 import type { WorkflowInstance } from './workflow'
@@ -34,6 +35,11 @@ type ReportSkillOptions = ReportOptions & {
 type ReportStorage = {
   saveReportSnapshot(report: ReportSnapshot): Promise<void>
   saveAgentActivity(activity: AgentActivity): Promise<void>
+}
+
+type RuntimeReportStorage = ReportStorage & {
+  getRequestInstances(): Promise<RequestInstance[]>
+  getWorkflowInstances(): Promise<WorkflowInstance[]>
 }
 
 export function generateProcurementReport(
@@ -82,6 +88,31 @@ export async function runReportGenerationSkill(
   })
 
   return report
+}
+
+export async function generateReportFromRuntimeStorage(
+  storage: RuntimeReportStorage,
+  options: ReportSkillOptions = {},
+): Promise<ReportSnapshot> {
+  const requests = await storage.getRequestInstances()
+  const workflows = await storage.getWorkflowInstances()
+  const riskResults = requests.reduce<Record<string, RiskAnalysisResult>>((results, request) => {
+    results[request.id] = analyzeProcurementRisk(request, {
+      previousRequests: requests.filter((candidate) => candidate.id !== request.id),
+    })
+
+    return results
+  }, {})
+
+  return runReportGenerationSkill(
+    storage,
+    {
+      requests,
+      workflows,
+      riskResults,
+    },
+    options,
+  )
 }
 
 function countRequestsByStatus(

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { generateProcurementReport, runReportGenerationSkill } from './report'
+import {
+  generateProcurementReport,
+  generateReportFromRuntimeStorage,
+  runReportGenerationSkill,
+} from './report'
 import type { RequestInstance } from './request'
 import type { RiskAnalysisResult } from './risk'
 import { LocalStorageAdapter, MemoryStorage } from './storage'
@@ -104,6 +108,43 @@ describe('ReportGenerationSkill', () => {
         createdAt: '2026-06-03T16:00:00.000Z',
       },
     ])
+  })
+
+  it('generates a report snapshot from persisted runtime data', async () => {
+    const storage = new LocalStorageAdapter(new MemoryStorage())
+    const highRiskRequest = createRequest('request-high-risk', 12000)
+    const lowRiskRequest = createRequest('request-low-risk', 800)
+
+    await storage.saveRequestInstance(highRiskRequest)
+    await storage.saveRequestInstance(lowRiskRequest)
+    await storage.saveWorkflowInstance({
+      requestId: highRiskRequest.id,
+      status: 'approved',
+      approvalPath: [],
+      currentStepIndex: 1,
+      currentStep: null,
+      approvalRecords: [],
+      archivedAt: '2026-06-03T12:00:00.000Z',
+      updatedAt: '2026-06-03T12:00:00.000Z',
+    })
+
+    const report = await generateReportFromRuntimeStorage(storage, {
+      id: () => 'report-runtime-1',
+      activityId: () => 'activity-report-runtime-1',
+      now: () => new Date('2026-06-03T17:00:00.000Z'),
+    })
+
+    expect(report.totalAmount).toBe(12800)
+    expect(report.requestCountByStatus).toEqual({
+      approved: 1,
+      submitted: 1,
+    })
+    expect(report.highRiskRequestCount).toBe(1)
+    expect(report.averageApprovalCycleTimeHours).toBe(2)
+    expect(report.summary).toBe(
+      'AI CEO summary: 2 procurement request(s), total amount 12800, 1 high-risk request(s).',
+    )
+    await expect(storage.getReportSnapshots()).resolves.toEqual([report])
   })
 })
 

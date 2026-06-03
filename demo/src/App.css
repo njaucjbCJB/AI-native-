@@ -214,6 +214,48 @@ textarea {
   grid-column: 2;
 }
 
+.reports-panel {
+  grid-column: 2;
+}
+
+.report-metrics {
+  margin-bottom: 12px;
+}
+
+.status-distribution {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.status-distribution div {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.status-distribution span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.status-distribution strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 18px;
+}
+
+.ceo-summary {
+  margin: 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .activity-list {
   display: grid;
   gap: 10px;
@@ -288,7 +330,8 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  .activity-panel {
+  .activity-panel,
+  .reports-panel {
     grid-column: auto;
   }
 
