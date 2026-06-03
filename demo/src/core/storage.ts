@@ -1,9 +1,11 @@
 import type { Blueprint } from './blueprint'
+import type { RequestInstance } from './request'
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 
 const BLUEPRINTS_KEY = 'aiof.blueprints'
 const ACTIVE_BLUEPRINT_KEY = 'aiof.activeBlueprintId'
+const REQUEST_INSTANCES_KEY = 'aiof.requests'
 
 export class MemoryStorage implements StorageLike {
   private items = new Map<string, string>()
@@ -58,9 +60,24 @@ export class LocalStorageAdapter {
     this.storage.setItem(ACTIVE_BLUEPRINT_KEY, blueprintId)
   }
 
+  async getRequestInstances(): Promise<RequestInstance[]> {
+    return this.readJson<RequestInstance[]>(REQUEST_INSTANCES_KEY, [])
+  }
+
+  async saveRequestInstance(request: RequestInstance): Promise<void> {
+    const requests = await this.getRequestInstances()
+    const nextRequests = [
+      ...requests.filter((existing) => existing.id !== request.id),
+      request,
+    ]
+
+    this.writeJson(REQUEST_INSTANCES_KEY, nextRequests)
+  }
+
   async resetDemoData(): Promise<void> {
     this.storage.removeItem(BLUEPRINTS_KEY)
     this.storage.removeItem(ACTIVE_BLUEPRINT_KEY)
+    this.storage.removeItem(REQUEST_INSTANCES_KEY)
   }
 
   private readJson<T>(key: string, fallback: T): T {
