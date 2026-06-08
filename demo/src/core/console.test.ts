@@ -3,13 +3,15 @@ import { generateBlueprintFromRequirement } from './blueprint'
 import { getFrameworkConsoleViews } from './console'
 
 describe('Framework console views', () => {
-  it('defines the eight CIO console views from the active blueprint', () => {
+  it('defines the CIO console views from the active blueprint', () => {
     const blueprint = generateBlueprintFromRequirement('I need a procurement approval workflow.')
 
     const views = getFrameworkConsoleViews(blueprint)
 
     expect(views.map((view) => view.id)).toEqual([
       'blueprints',
+      'project-registry',
+      'audit-cycles',
       'data-model',
       'form-schema',
       'workflow',
@@ -20,6 +22,12 @@ describe('Framework console views', () => {
     ])
     expect(views.find((view) => view.id === 'blueprints')?.items).toContain(
       'Procurement Approval v1',
+    )
+    expect(views.find((view) => view.id === 'project-registry')?.title).toBe(
+      '项目台账',
+    )
+    expect(views.find((view) => view.id === 'audit-cycles')?.title).toBe(
+      '审计周期',
     )
     expect(views.find((view) => view.id === 'form-schema')?.items).toContain(
       'Amount: number',
