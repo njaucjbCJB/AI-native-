@@ -397,7 +397,14 @@ button.active,
 }
 
 .rjsf-preview .array-item,
-.audit-form-shell .array-item {
+.audit-form-shell .array-item,
+.rjsf-preview .rjsf-array-item,
+.audit-form-shell .rjsf-array-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
   border: 1px solid #dbe3ee;
   border-radius: 8px;
   margin-top: 10px;
@@ -405,12 +412,59 @@ button.active,
   background: #ffffff;
 }
 
+.rjsf-preview .rjsf-array-item,
+.audit-form-shell .rjsf-array-item {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.rjsf-preview .array-item-list,
+.audit-form-shell .array-item-list,
+.rjsf-preview .rjsf-field-array > fieldset > .row,
+.audit-form-shell .rjsf-field-array > fieldset > .row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin: 0;
+}
+
+.rjsf-preview .array-item > [class*='col-'],
+.audit-form-shell .array-item > [class*='col-'],
+.rjsf-preview .rjsf-array-item > [class*='col-'],
+.audit-form-shell .rjsf-array-item > [class*='col-'],
+.rjsf-preview .rjsf-field-array > fieldset > .row > [class*='col-'],
+.audit-form-shell .rjsf-field-array > fieldset > .row > [class*='col-'] {
+  width: 100% !important;
+  max-width: none;
+  float: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rjsf-preview .array-item > .form-group,
+.audit-form-shell .array-item > .form-group,
+.rjsf-preview .array-item fieldset,
+.audit-form-shell .array-item fieldset {
+  min-width: 0;
+  width: 100%;
+}
+
 .rjsf-preview .array-item-toolbar,
-.audit-form-shell .array-item-toolbar {
+.audit-form-shell .array-item-toolbar,
+.rjsf-preview .array-item-toolbox,
+.audit-form-shell .array-item-toolbox,
+.rjsf-preview .btn-group,
+.audit-form-shell .btn-group {
   display: flex;
   justify-content: flex-end;
   gap: 6px;
   margin-top: 8px;
+  width: 100%;
+}
+
+.rjsf-preview .array-item-toolbox,
+.audit-form-shell .array-item-toolbox {
+  justify-self: stretch;
 }
 
 .rjsf-preview button.btn-add,
@@ -425,7 +479,11 @@ button.active,
 .rjsf-preview button.btn-add i,
 .audit-form-shell button.btn-add i,
 .rjsf-preview .array-item-toolbar button i,
-.audit-form-shell .array-item-toolbar button i {
+.audit-form-shell .array-item-toolbar button i,
+.rjsf-preview .array-item-toolbox button i,
+.audit-form-shell .array-item-toolbox button i,
+.rjsf-preview .btn-group button i,
+.audit-form-shell .btn-group button i {
   display: none;
 }
 
@@ -435,17 +493,23 @@ button.active,
 }
 
 .rjsf-preview .array-item-toolbar button[title='Remove']::before,
-.audit-form-shell .array-item-toolbar button[title='Remove']::before {
+.audit-form-shell .array-item-toolbar button[title='Remove']::before,
+.rjsf-preview .rjsf-array-item-remove::before,
+.audit-form-shell .rjsf-array-item-remove::before {
   content: '删除';
 }
 
 .rjsf-preview .array-item-toolbar button[title='Move up']::before,
-.audit-form-shell .array-item-toolbar button[title='Move up']::before {
+.audit-form-shell .array-item-toolbar button[title='Move up']::before,
+.rjsf-preview button[title='Move up']::before,
+.audit-form-shell button[title='Move up']::before {
   content: '上移';
 }
 
 .rjsf-preview .array-item-toolbar button[title='Move down']::before,
-.audit-form-shell .array-item-toolbar button[title='Move down']::before {
+.audit-form-shell .array-item-toolbar button[title='Move down']::before,
+.rjsf-preview button[title='Move down']::before,
+.audit-form-shell button[title='Move down']::before {
   content: '下移';
 }
 
