@@ -10,7 +10,6 @@ export type ConsoleViewId =
   | 'agent-skills'
   | 'runtime'
   | 'reports'
-  | 'architecture'
 
 export type ConsoleView = {
   id: ConsoleViewId
@@ -94,18 +93,6 @@ export function getFrameworkConsoleViews(blueprint: Blueprint): ConsoleView[] {
       title: 'Reports',
       description: 'Management metrics and AI CEO summary generated from runtime data.',
       items: blueprint.reports.map((report) => report.name),
-    },
-    {
-      id: 'architecture',
-      title: 'Architecture',
-      description: 'Replacement route from first-version mock boundaries to production systems.',
-      items: [
-        'LocalStorageAdapter -> database adapter',
-        'Mock AgentRuntime -> enterprise AI gateway',
-        'In-memory workflow logic -> production workflow engine',
-        'Static report summary -> governed analytics service',
-        'Demo procurement blueprint -> multi-domain blueprint catalog',
-      ],
     },
   ]
 }

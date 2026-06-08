@@ -18,7 +18,6 @@ describe('Framework console views', () => {
       'agent-skills',
       'runtime',
       'reports',
-      'architecture',
     ])
     expect(views.find((view) => view.id === 'blueprints')?.items).toContain(
       'Procurement Approval v1',
@@ -37,9 +36,6 @@ describe('Framework console views', () => {
     )
     expect(views.find((view) => view.id === 'agent-skills')?.items).toContain(
       'ReportGenerationSkill: mock now, production replaceable',
-    )
-    expect(views.find((view) => view.id === 'architecture')?.items).toContain(
-      'LocalStorageAdapter -> database adapter',
     )
   })
 })
