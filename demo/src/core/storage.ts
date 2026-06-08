@@ -1,6 +1,7 @@
 import type { AgentActivity } from './agent-activity'
+import type { AuditChangeRecord } from './audit-form'
 import type { ArchiveRecord } from './archive'
-import type { AuditCycle } from './audit-cycle'
+import type { AuditCycle, ProjectAuditInstance } from './audit-cycle'
 import type { Blueprint } from './blueprint'
 import type { ProjectAuditBlueprint } from './project-audit-blueprint'
 import type { Project } from './project'
@@ -21,6 +22,8 @@ const BLUEPRINT_VERSIONS_KEY = 'aiof.blueprintVersions'
 const ACTIVE_BLUEPRINT_VERSION_KEY = 'aiof.activeBlueprintVersion'
 const PROJECTS_KEY = 'aiof.projects'
 const AUDIT_CYCLES_KEY = 'aiof.auditCycles'
+const PROJECT_AUDIT_INSTANCES_KEY = 'aiof.projectAuditInstances'
+const AUDIT_CHANGE_RECORDS_KEY = 'aiof.auditChangeRecords'
 
 export class MemoryStorage implements StorageLike {
   private items = new Map<string, string>()
@@ -225,6 +228,34 @@ export class LocalStorageAdapter {
     this.writeJson(AUDIT_CYCLES_KEY, nextCycles)
   }
 
+  async getProjectAuditInstances(): Promise<ProjectAuditInstance[]> {
+    return this.readJson<ProjectAuditInstance[]>(PROJECT_AUDIT_INSTANCES_KEY, [])
+  }
+
+  async saveProjectAuditInstance(instance: ProjectAuditInstance): Promise<void> {
+    const instances = await this.getProjectAuditInstances()
+    const nextInstances = [
+      ...instances.filter((existing) => existing.id !== instance.id),
+      instance,
+    ]
+
+    this.writeJson(PROJECT_AUDIT_INSTANCES_KEY, nextInstances)
+  }
+
+  async getAuditChangeRecords(instanceId?: string): Promise<AuditChangeRecord[]> {
+    const records = this.readJson<AuditChangeRecord[]>(AUDIT_CHANGE_RECORDS_KEY, [])
+
+    return instanceId
+      ? records.filter((record) => record.instanceId === instanceId)
+      : records
+  }
+
+  async saveAuditChangeRecord(record: AuditChangeRecord): Promise<void> {
+    const records = await this.getAuditChangeRecords()
+
+    this.writeJson(AUDIT_CHANGE_RECORDS_KEY, [...records, record])
+  }
+
   async resetDemoData(): Promise<void> {
     this.storage.removeItem(BLUEPRINTS_KEY)
     this.storage.removeItem(ACTIVE_BLUEPRINT_KEY)
@@ -237,6 +268,8 @@ export class LocalStorageAdapter {
     this.storage.removeItem(ACTIVE_BLUEPRINT_VERSION_KEY)
     this.storage.removeItem(PROJECTS_KEY)
     this.storage.removeItem(AUDIT_CYCLES_KEY)
+    this.storage.removeItem(PROJECT_AUDIT_INSTANCES_KEY)
+    this.storage.removeItem(AUDIT_CHANGE_RECORDS_KEY)
   }
 
   private readJson<T>(key: string, fallback: T): T {

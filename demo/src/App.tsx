@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import Form from '@rjsf/core'
+import validator from '@rjsf/validator-ajv8'
+import type { RJSFSchema } from '@rjsf/utils'
 import { runApproveCurrentStep, runRejectCurrentStep, type AgentActivity } from './core/agent-activity'
 import type { WorkflowInstance } from './core/workflow'
 import { generateBlueprintFromRequirement, type Blueprint, type FormField } from './core/blueprint'
@@ -13,9 +16,14 @@ import { ProjectAuditBlueprintConsole } from './ProjectAuditBlueprintConsole'
 import { initializeProjectRegistry, type Project } from './core/project'
 import {
   createDraftAuditCycle,
+  startAuditCycle,
   updateAuditScope,
   type AuditCycle,
+  type ProjectAuditFormData,
+  type ProjectAuditInstance,
 } from './core/audit-cycle'
+import { saveProjectAuditForm, type AuditChangeRecord } from './core/audit-form'
+import type { ProjectAuditBlueprint } from './core/project-audit-blueprint'
 import './App.css'
 
 const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
@@ -47,6 +55,8 @@ function App() {
   const [reports, setReports] = useState<ReportSnapshot[]>([])
   const [projects, setProjects] = useState<Project[]>([])
   const [auditCycles, setAuditCycles] = useState<AuditCycle[]>([])
+  const [projectAuditInstances, setProjectAuditInstances] = useState<ProjectAuditInstance[]>([])
+  const [auditChangeRecords, setAuditChangeRecords] = useState<AuditChangeRecord[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
   const [activeView, setActiveView] = useState<AppViewId>('project-audit-blueprint')
@@ -65,6 +75,8 @@ function App() {
       nextReports,
       nextProjects,
       nextAuditCycles,
+      nextProjectAuditInstances,
+      nextAuditChangeRecords,
     ] = await Promise.all([
       storage.getRequestInstances(),
       storage.getWorkflowInstances(),
@@ -72,6 +84,8 @@ function App() {
       storage.getReportSnapshots(),
       storage.getProjects(),
       storage.getAuditCycles(),
+      storage.getProjectAuditInstances(),
+      storage.getAuditChangeRecords(),
     ])
 
     setRequests(nextRequests)
@@ -80,6 +94,8 @@ function App() {
     setReports(nextReports)
     setProjects(nextProjects)
     setAuditCycles(nextAuditCycles)
+    setProjectAuditInstances(nextProjectAuditInstances)
+    setAuditChangeRecords(nextAuditChangeRecords)
   }, [storage])
 
   useEffect(() => {
@@ -154,6 +170,44 @@ function App() {
     setMessage(`已更新 ${cycle.name} 的审计范围`)
   }
 
+  async function handleStartAuditCycle(cycleId: string) {
+    try {
+      const result = await startAuditCycle(storage, cycleId)
+
+      await refreshRuntimeState()
+      setMessage(`已启动 ${result.cycle.name}，生成 ${result.instances.length} 条审计实例`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '启动审计周期失败')
+    }
+  }
+
+  async function handleSaveAuditForm(
+    instanceId: string,
+    formData: ProjectAuditFormData,
+    reason: string,
+  ) {
+    try {
+      const changeReasons = reason.trim()
+        ? {
+            'projectSnapshot.projectCode': reason,
+            'projectSnapshot.projectOwner': reason,
+            'projectSnapshot.supervisingVp': reason,
+            'executionPerformance.approvedBudget': reason,
+            strategicObjectiveAssessments: reason,
+          }
+        : undefined
+      const saved = await saveProjectAuditForm(storage, instanceId, formData, {
+        actor: 'Alice Chen',
+        changeReasons,
+      })
+
+      await refreshRuntimeState()
+      setMessage(`已保存审计实例 ${saved.id}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '保存审计表单失败')
+    }
+  }
+
   function updateField(field: FormField, value: string) {
     setFormData((current) => ({
       ...current,
@@ -195,10 +249,15 @@ function App() {
       return (
         <AuditCyclesPanel
           auditCycles={auditCycles}
+          auditChangeRecords={auditChangeRecords}
           message={message}
           onCreate={handleCreateAuditCycle}
+          onSaveAuditForm={handleSaveAuditForm}
+          onStart={handleStartAuditCycle}
           onUpdateScope={handleUpdateAuditScope}
+          projectAuditInstances={projectAuditInstances}
           projects={projects}
+          storage={storage}
         />
       )
     }
@@ -524,16 +583,30 @@ function ProjectRegistryPanel({
 
 function AuditCyclesPanel({
   auditCycles,
+  auditChangeRecords,
   projects,
+  projectAuditInstances,
   message,
   onCreate,
+  onSaveAuditForm,
+  onStart,
   onUpdateScope,
+  storage,
 }: {
   auditCycles: AuditCycle[]
+  auditChangeRecords: AuditChangeRecord[]
   projects: Project[]
+  projectAuditInstances: ProjectAuditInstance[]
   message: string
   onCreate: (input: { name: string; startDate: string; endDate: string }) => Promise<void>
+  onSaveAuditForm: (
+    instanceId: string,
+    formData: ProjectAuditFormData,
+    reason: string,
+  ) => Promise<void>
+  onStart: (cycleId: string) => Promise<void>
   onUpdateScope: (cycleId: string, projectIds: string[]) => Promise<void>
+  storage: LocalStorageAdapter
 }) {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -592,7 +665,19 @@ function AuditCyclesPanel({
                 </label>
               ))}
             </div>
-            <p className="scope-summary">已选择 {cycle.projectIds.length} 个项目</p>
+            <div className="form-actions">
+              <p className="scope-summary">已选择 {cycle.projectIds.length} 个项目</p>
+              {cycle.status === 'draft' ? (
+                <button
+                  className="primary-action"
+                  disabled={cycle.projectIds.length === 0}
+                  onClick={() => void onStart(cycle.id)}
+                  type="button"
+                >
+                  启动周期
+                </button>
+              ) : null}
+            </div>
           </article>
         )) : (
           <section className="panel">
@@ -600,6 +685,166 @@ function AuditCyclesPanel({
           </section>
         )}
       </section>
+      <ProjectAuditInstanceRuntimePanel
+        auditChangeRecords={auditChangeRecords}
+        instances={projectAuditInstances}
+        onSaveAuditForm={onSaveAuditForm}
+        projects={projects}
+        storage={storage}
+      />
+    </section>
+  )
+}
+
+function ProjectAuditInstanceRuntimePanel({
+  auditChangeRecords,
+  instances,
+  onSaveAuditForm,
+  projects,
+  storage,
+}: {
+  auditChangeRecords: AuditChangeRecord[]
+  instances: ProjectAuditInstance[]
+  onSaveAuditForm: (
+    instanceId: string,
+    formData: ProjectAuditFormData,
+    reason: string,
+  ) => Promise<void>
+  projects: Project[]
+  storage: LocalStorageAdapter
+}) {
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null)
+  const [activeBlueprint, setActiveBlueprint] = useState<ProjectAuditBlueprint | null>(null)
+  const [reason, setReason] = useState('')
+  const selectedInstance =
+    instances.find((instance) => instance.id === selectedInstanceId) ?? instances[0] ?? null
+
+  useEffect(() => {
+    async function loadBlueprint() {
+      if (!selectedInstance) {
+        setActiveBlueprint(null)
+        return
+      }
+
+      const versions = await storage.getBlueprintVersions(selectedInstance.blueprintId)
+      setActiveBlueprint(
+        versions.find((version) => version.version === selectedInstance.blueprintVersion) ?? null,
+      )
+    }
+
+    void loadBlueprint()
+  }, [selectedInstance, storage])
+
+  async function submitAuditForm(event: { formData?: unknown }) {
+    if (!selectedInstance || !event.formData) {
+      return
+    }
+
+    await onSaveAuditForm(
+      selectedInstance.id,
+      event.formData as ProjectAuditFormData,
+      reason,
+    )
+    setReason('')
+  }
+
+  const selectedProject = selectedInstance
+    ? projects.find((project) => project.id === selectedInstance.projectId)
+    : null
+  const selectedChangeRecords = selectedInstance
+    ? auditChangeRecords.filter((record) => record.instanceId === selectedInstance.id)
+    : []
+
+  return (
+    <section className="panel audit-runtime-panel">
+      <div className="panel-heading">
+        <h2>项目审计实例</h2>
+        <span>{instances.length} 条实例</span>
+      </div>
+      {instances.length ? (
+        <div className="audit-runtime-layout">
+          <div className="audit-instance-list">
+            {instances.map((instance) => {
+              const project = projects.find((candidate) => candidate.id === instance.projectId)
+
+              return (
+                <button
+                  className={selectedInstance?.id === instance.id ? 'active' : ''}
+                  key={instance.id}
+                  onClick={() => setSelectedInstanceId(instance.id)}
+                  type="button"
+                >
+                  <strong>{project?.name ?? instance.projectSnapshot.projectName}</strong>
+                  <span>
+                    {instance.status === 'draft' ? '待填写' : instance.status} · Blueprint v{instance.blueprintVersion}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="audit-form-shell">
+            {selectedInstance && activeBlueprint ? (
+              <>
+                <div className="snapshot-strip">
+                  <div>
+                    <span>项目快照</span>
+                    <strong>{selectedInstance.projectSnapshot.projectName}</strong>
+                  </div>
+                  <div>
+                    <span>负责人</span>
+                    <strong>{selectedInstance.projectSnapshot.projectOwner}</strong>
+                  </div>
+                  <div>
+                    <span>台账当前预算</span>
+                    <strong>{formatMoney(selectedProject?.approvedBudget ?? 0)}</strong>
+                  </div>
+                  <div>
+                    <span>快照预算</span>
+                    <strong>{formatMoney(selectedInstance.projectSnapshot.approvedBudget)}</strong>
+                  </div>
+                </div>
+                <label className="field">
+                  <span>关键字段修改原因</span>
+                  <textarea
+                    placeholder="修改项目编号、负责人、分管 VP、批准预算或战略目标时必填"
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                </label>
+                <Form
+                  formData={selectedInstance.formData}
+                  onSubmit={(event) => void submitAuditForm(event)}
+                  schema={activeBlueprint.formSchema as RJSFSchema}
+                  validator={validator}
+                >
+                  <button className="primary-action" type="submit">保存审计表单</button>
+                </Form>
+                <div className="change-record-list">
+                  <h3>变更记录</h3>
+                  {selectedChangeRecords.length ? (
+                    selectedChangeRecords.map((record) => (
+                      <article key={record.id}>
+                        <strong>{record.fieldPath}</strong>
+                        <span>{record.changedBy} · {formatActivityTime(record.changedAt)}</span>
+                        <p>
+                          {String(record.previousValue ?? '')} → {String(record.nextValue ?? '')}
+                        </p>
+                        {record.reason ? <p>{record.reason}</p> : null}
+                      </article>
+                    ))
+                  ) : (
+                    <p className="empty-state">保存修改后会显示字段级审计变更记录。</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="empty-state">选择一个审计实例后，会按绑定的 Blueprint 渲染动态表单。</p>
+            )}
+          </div>
+        </div>
+      ) : (
+        <p className="empty-state">启动审计周期后，这里会显示自动生成的审计实例。</p>
+      )}
     </section>
   )
 }

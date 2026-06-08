@@ -874,6 +874,158 @@ textarea {
   font-size: 13px;
 }
 
+.audit-runtime-panel {
+  grid-column: 1 / -1;
+}
+
+.audit-runtime-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.audit-instance-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.audit-instance-list button {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: left;
+}
+
+.audit-instance-list button.active {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.audit-instance-list span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.audit-form-shell {
+  min-width: 0;
+}
+
+.snapshot-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.snapshot-strip div {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.snapshot-strip span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.snapshot-strip strong {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.audit-form-shell form {
+  display: grid;
+  gap: 12px;
+}
+
+.audit-form-shell fieldset {
+  min-width: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.audit-form-shell legend {
+  padding: 0 4px;
+  color: #0f172a;
+  font-weight: 750;
+}
+
+.audit-form-shell .form-group {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.audit-form-shell label {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.audit-form-shell input,
+.audit-form-shell select,
+.audit-form-shell textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+.audit-form-shell textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.audit-form-shell .error-detail {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.change-record-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.change-record-list h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+}
+
+.change-record-list article {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.change-record-list article span,
+.change-record-list article p {
+  display: block;
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: #475569;
+  font-size: 12px;
+}
+
 @media (max-width: 860px) {
   .console-shell {
     grid-template-columns: 1fr;
@@ -899,6 +1051,8 @@ textarea {
   .summary-row,
   .blueprint-console,
   .admin-grid,
+  .audit-runtime-layout,
+  .snapshot-strip,
   .audit-workflow li {
     grid-template-columns: 1fr;
   }
