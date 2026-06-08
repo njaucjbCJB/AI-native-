@@ -1,6 +1,9 @@
 import type { AgentActivity } from './agent-activity'
 import type { ArchiveRecord } from './archive'
+import type { AuditCycle } from './audit-cycle'
 import type { Blueprint } from './blueprint'
+import type { ProjectAuditBlueprint } from './project-audit-blueprint'
+import type { Project } from './project'
 import type { ReportSnapshot } from './report'
 import type { RequestInstance } from './request'
 import type { WorkflowInstance } from './workflow'
@@ -14,6 +17,10 @@ const WORKFLOW_INSTANCES_KEY = 'aiof.workflows'
 const ARCHIVE_RECORDS_KEY = 'aiof.archiveRecords'
 const AGENT_ACTIVITIES_KEY = 'aiof.activities'
 const REPORT_SNAPSHOTS_KEY = 'aiof.reportSnapshots'
+const BLUEPRINT_VERSIONS_KEY = 'aiof.blueprintVersions'
+const ACTIVE_BLUEPRINT_VERSION_KEY = 'aiof.activeBlueprintVersion'
+const PROJECTS_KEY = 'aiof.projects'
+const AUDIT_CYCLES_KEY = 'aiof.auditCycles'
 
 export class MemoryStorage implements StorageLike {
   private items = new Map<string, string>()
@@ -66,6 +73,58 @@ export class LocalStorageAdapter {
 
   async setActiveBlueprint(blueprintId: string): Promise<void> {
     this.storage.setItem(ACTIVE_BLUEPRINT_KEY, blueprintId)
+  }
+
+  async getBlueprintVersions(blueprintId?: string): Promise<ProjectAuditBlueprint[]> {
+    const versions = this.readJson<ProjectAuditBlueprint[]>(BLUEPRINT_VERSIONS_KEY, [])
+
+    return blueprintId
+      ? versions.filter((blueprint) => blueprint.id === blueprintId)
+      : versions
+  }
+
+  async saveBlueprintVersion(blueprint: ProjectAuditBlueprint): Promise<void> {
+    if (blueprint.lifecycle !== 'deployed' || blueprint.version === null) {
+      throw new Error('Only deployed Blueprint versions can be saved.')
+    }
+
+    const versions = await this.getBlueprintVersions()
+    const versionExists = versions.some(
+      (existing) =>
+        existing.id === blueprint.id && existing.version === blueprint.version,
+    )
+
+    if (versionExists) {
+      throw new Error(
+        `Blueprint ${blueprint.id} version ${blueprint.version} is immutable.`,
+      )
+    }
+
+    this.writeJson(BLUEPRINT_VERSIONS_KEY, [...versions, blueprint])
+  }
+
+  async setActiveBlueprintVersion(
+    blueprintId: string,
+    version: number,
+  ): Promise<void> {
+    this.writeJson(ACTIVE_BLUEPRINT_VERSION_KEY, { blueprintId, version })
+  }
+
+  async getActiveBlueprintVersion(): Promise<ProjectAuditBlueprint | null> {
+    const activeVersion = this.readJson<{
+      blueprintId: string
+      version: number
+    } | null>(ACTIVE_BLUEPRINT_VERSION_KEY, null)
+
+    if (!activeVersion) {
+      return null
+    }
+
+    const versions = await this.getBlueprintVersions(activeVersion.blueprintId)
+
+    return (
+      versions.find((blueprint) => blueprint.version === activeVersion.version) ?? null
+    )
   }
 
   async getRequestInstances(): Promise<RequestInstance[]> {
@@ -138,6 +197,34 @@ export class LocalStorageAdapter {
     this.writeJson(REPORT_SNAPSHOTS_KEY, nextReports)
   }
 
+  async getProjects(): Promise<Project[]> {
+    return this.readJson<Project[]>(PROJECTS_KEY, [])
+  }
+
+  async saveProject(project: Project): Promise<void> {
+    const projects = await this.getProjects()
+    const nextProjects = [
+      ...projects.filter((existing) => existing.id !== project.id),
+      project,
+    ]
+
+    this.writeJson(PROJECTS_KEY, nextProjects)
+  }
+
+  async getAuditCycles(): Promise<AuditCycle[]> {
+    return this.readJson<AuditCycle[]>(AUDIT_CYCLES_KEY, [])
+  }
+
+  async saveAuditCycle(cycle: AuditCycle): Promise<void> {
+    const cycles = await this.getAuditCycles()
+    const nextCycles = [
+      ...cycles.filter((existing) => existing.id !== cycle.id),
+      cycle,
+    ]
+
+    this.writeJson(AUDIT_CYCLES_KEY, nextCycles)
+  }
+
   async resetDemoData(): Promise<void> {
     this.storage.removeItem(BLUEPRINTS_KEY)
     this.storage.removeItem(ACTIVE_BLUEPRINT_KEY)
@@ -146,6 +233,10 @@ export class LocalStorageAdapter {
     this.storage.removeItem(ARCHIVE_RECORDS_KEY)
     this.storage.removeItem(AGENT_ACTIVITIES_KEY)
     this.storage.removeItem(REPORT_SNAPSHOTS_KEY)
+    this.storage.removeItem(BLUEPRINT_VERSIONS_KEY)
+    this.storage.removeItem(ACTIVE_BLUEPRINT_VERSION_KEY)
+    this.storage.removeItem(PROJECTS_KEY)
+    this.storage.removeItem(AUDIT_CYCLES_KEY)
   }
 
   private readJson<T>(key: string, fallback: T): T {

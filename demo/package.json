@@ -12,6 +12,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@rjsf/core": "^6.6.2",
+    "@rjsf/validator-ajv8": "^6.6.2",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { runApproveCurrentStep, runRejectCurrentStep, type AgentActivity } from './core/agent-activity'
 import type { WorkflowInstance } from './core/workflow'
@@ -9,6 +9,13 @@ import type { ApprovalRole } from './core/approval-routing'
 import type { RequestData, RequestInstance } from './core/request'
 import { generateReportFromRuntimeStorage, type ReportSnapshot } from './core/report'
 import { getFrameworkConsoleViews, type ConsoleView, type ConsoleViewId } from './core/console'
+import { ProjectAuditBlueprintConsole } from './ProjectAuditBlueprintConsole'
+import { initializeProjectRegistry, type Project } from './core/project'
+import {
+  createDraftAuditCycle,
+  updateAuditScope,
+  type AuditCycle,
+} from './core/audit-cycle'
 import './App.css'
 
 const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
@@ -28,6 +35,8 @@ const INITIAL_FORM_DATA: RequestData = {
   reason: 'Run a security audit before the next enterprise customer launch.',
 }
 
+type AppViewId = 'project-audit-blueprint' | ConsoleViewId
+
 function App() {
   const storage = useMemo(() => new LocalStorageAdapter(), [])
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
@@ -36,9 +45,11 @@ function App() {
   const [workflows, setWorkflows] = useState<WorkflowInstance[]>([])
   const [agentActivities, setAgentActivities] = useState<AgentActivity[]>([])
   const [reports, setReports] = useState<ReportSnapshot[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [auditCycles, setAuditCycles] = useState<AuditCycle[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
-  const [activeView, setActiveView] = useState<ConsoleViewId>('runtime')
+  const [activeView, setActiveView] = useState<AppViewId>('project-audit-blueprint')
   const [message, setMessage] = useState('Runtime ready')
   const consoleViews = useMemo(
     () => (blueprint ? getFrameworkConsoleViews(blueprint) : []),
@@ -46,18 +57,44 @@ function App() {
   )
   const activeConsoleView = consoleViews.find((view) => view.id === activeView)
 
+  const refreshRuntimeState = useCallback(async () => {
+    const [
+      nextRequests,
+      nextWorkflows,
+      nextAgentActivities,
+      nextReports,
+      nextProjects,
+      nextAuditCycles,
+    ] = await Promise.all([
+      storage.getRequestInstances(),
+      storage.getWorkflowInstances(),
+      storage.getAgentActivities(),
+      storage.getReportSnapshots(),
+      storage.getProjects(),
+      storage.getAuditCycles(),
+    ])
+
+    setRequests(nextRequests)
+    setWorkflows(nextWorkflows)
+    setAgentActivities(nextAgentActivities)
+    setReports(nextReports)
+    setProjects(nextProjects)
+    setAuditCycles(nextAuditCycles)
+  }, [storage])
+
   useEffect(() => {
     async function initializeRuntime() {
       const defaultBlueprint = generateBlueprintFromRequirement(DEFAULT_REQUIREMENT)
 
       await storage.saveBlueprint(defaultBlueprint)
       await storage.setActiveBlueprint(defaultBlueprint.id)
+      await initializeProjectRegistry(storage)
       setBlueprint(defaultBlueprint)
       await refreshRuntimeState()
     }
 
     void initializeRuntime()
-  }, [storage])
+  }, [refreshRuntimeState, storage])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -93,18 +130,28 @@ function App() {
     setMessage(`${ROLE_LABELS[selectedRole]} ${decision === 'approve' ? 'approved' : 'rejected'} ${workflow.requestId}`)
   }
 
-  async function refreshRuntimeState() {
-    const [nextRequests, nextWorkflows, nextAgentActivities, nextReports] = await Promise.all([
-      storage.getRequestInstances(),
-      storage.getWorkflowInstances(),
-      storage.getAgentActivities(),
-      storage.getReportSnapshots(),
-    ])
+  async function handleSaveProject(project: Project) {
+    await storage.saveProject(project)
+    await refreshRuntimeState()
+    setMessage(`已保存项目 ${project.code}`)
+  }
 
-    setRequests(nextRequests)
-    setWorkflows(nextWorkflows)
-    setAgentActivities(nextAgentActivities)
-    setReports(nextReports)
+  async function handleCreateAuditCycle(input: {
+    name: string
+    startDate: string
+    endDate: string
+  }) {
+    const cycle = await createDraftAuditCycle(storage, input)
+
+    await refreshRuntimeState()
+    setMessage(`已创建草稿周期 ${cycle.name}`)
+  }
+
+  async function handleUpdateAuditScope(cycleId: string, projectIds: string[]) {
+    const cycle = await updateAuditScope(storage, cycleId, projectIds)
+
+    await refreshRuntimeState()
+    setMessage(`已更新 ${cycle.name} 的审计范围`)
   }
 
   function updateField(field: FormField, value: string) {
@@ -115,6 +162,10 @@ function App() {
   }
 
   function renderActiveView() {
+    if (activeView === 'project-audit-blueprint') {
+      return <ProjectAuditBlueprintConsole storage={storage} />
+    }
+
     if (!blueprint || !activeConsoleView) {
       return (
         <section className="panel">
@@ -128,6 +179,28 @@ function App() {
 
     if (activeView === 'runtime') {
       return renderRuntimeView()
+    }
+
+    if (activeView === 'project-registry') {
+      return (
+        <ProjectRegistryPanel
+          message={message}
+          onSave={handleSaveProject}
+          projects={projects}
+        />
+      )
+    }
+
+    if (activeView === 'audit-cycles') {
+      return (
+        <AuditCyclesPanel
+          auditCycles={auditCycles}
+          message={message}
+          onCreate={handleCreateAuditCycle}
+          onUpdateScope={handleUpdateAuditScope}
+          projects={projects}
+        />
+      )
     }
 
     if (activeView === 'reports') {
@@ -245,6 +318,13 @@ function App() {
           <h1>控制台</h1>
         </div>
         <nav aria-label="Console views">
+          <button
+            className={activeView === 'project-audit-blueprint' ? 'active' : ''}
+            onClick={() => setActiveView('project-audit-blueprint')}
+            type="button"
+          >
+            项目审计蓝图
+          </button>
           {consoleViews.map((view) => (
             <button
               className={activeView === view.id ? 'active' : ''}
@@ -262,7 +342,11 @@ function App() {
       <header className="runtime-header">
         <div>
           <p className="eyebrow">AI Enterprise Operating Framework Console</p>
-          <h1>{activeConsoleView?.title ?? 'Runtime'}</h1>
+          <h1>
+            {activeView === 'project-audit-blueprint'
+              ? '项目审计自动配置'
+              : (activeConsoleView?.title ?? 'Runtime')}
+          </h1>
         </div>
         {activeView === 'runtime' ? (
           <div className="role-switcher" aria-label="Role switcher">
@@ -283,6 +367,266 @@ function App() {
         {renderActiveView()}
       </section>
     </main>
+  )
+}
+
+type ProjectFormState = Omit<Project, 'approvedBudget' | 'currentCost' | 'milestones'> & {
+  approvedBudget: string
+  currentCost: string
+  milestonesText: string
+}
+
+const EMPTY_PROJECT_FORM: ProjectFormState = {
+  id: '',
+  code: '',
+  name: '',
+  owner: '',
+  supervisingVp: '',
+  department: '',
+  plannedStartDate: '',
+  plannedEndDate: '',
+  strategicObjective: '',
+  approvedBudget: '',
+  currentCost: '',
+  milestonesText: '',
+}
+
+function ProjectRegistryPanel({
+  projects,
+  message,
+  onSave,
+}: {
+  projects: Project[]
+  message: string
+  onSave: (project: Project) => Promise<void>
+}) {
+  const [form, setForm] = useState<ProjectFormState>(EMPTY_PROJECT_FORM)
+
+  function updateForm(key: keyof ProjectFormState, value: string) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function editProject(project: Project) {
+    setForm({
+      ...project,
+      approvedBudget: String(project.approvedBudget),
+      currentCost: String(project.currentCost),
+      milestonesText: project.milestones
+        .map((milestone) => `${milestone.name} | ${milestone.plannedCompletionDate}`)
+        .join('\n'),
+    })
+  }
+
+  async function submitProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const projectId = form.id || crypto.randomUUID()
+    const milestones = form.milestonesText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const [name, plannedCompletionDate = ''] = line.split('|').map((value) => value.trim())
+
+        return {
+          id: `${projectId}-milestone-${index + 1}`,
+          name,
+          plannedCompletionDate,
+        }
+      })
+
+    await onSave({
+      id: projectId,
+      code: form.code,
+      name: form.name,
+      owner: form.owner,
+      supervisingVp: form.supervisingVp,
+      department: form.department,
+      plannedStartDate: form.plannedStartDate,
+      plannedEndDate: form.plannedEndDate,
+      strategicObjective: form.strategicObjective,
+      approvedBudget: Number(form.approvedBudget),
+      currentCost: Number(form.currentCost),
+      milestones,
+    })
+    setForm(EMPTY_PROJECT_FORM)
+  }
+
+  return (
+    <section className="admin-grid">
+      <form className="panel admin-form" onSubmit={(event) => void submitProject(event)}>
+        <div className="panel-heading">
+          <h2>{form.id ? '编辑项目' : '新增项目'}</h2>
+          <span>Project Registry</span>
+        </div>
+        <div className="form-grid">
+          <TextField label="项目编号" required value={form.code} onChange={(value) => updateForm('code', value)} />
+          <TextField label="项目名称" required value={form.name} onChange={(value) => updateForm('name', value)} />
+          <TextField label="项目负责人" required value={form.owner} onChange={(value) => updateForm('owner', value)} />
+          <TextField label="分管项目 VP" required value={form.supervisingVp} onChange={(value) => updateForm('supervisingVp', value)} />
+          <TextField label="所属部门" required value={form.department} onChange={(value) => updateForm('department', value)} />
+          <TextField label="计划开始日期" required type="date" value={form.plannedStartDate} onChange={(value) => updateForm('plannedStartDate', value)} />
+          <TextField label="计划结束日期" required type="date" value={form.plannedEndDate} onChange={(value) => updateForm('plannedEndDate', value)} />
+          <TextField label="批准预算" required type="number" value={form.approvedBudget} onChange={(value) => updateForm('approvedBudget', value)} />
+          <TextField label="当前成本" required type="number" value={form.currentCost} onChange={(value) => updateForm('currentCost', value)} />
+        </div>
+        <label className="field">
+          <span>战略目标<strong>*</strong></span>
+          <textarea required value={form.strategicObjective} onChange={(event) => updateForm('strategicObjective', event.target.value)} />
+        </label>
+        <label className="field">
+          <span>里程碑（每行：名称 | 计划完成日期）<strong>*</strong></span>
+          <textarea
+            placeholder="Pilot launch | 2026-09-30"
+            required
+            value={form.milestonesText}
+            onChange={(event) => updateForm('milestonesText', event.target.value)}
+          />
+        </label>
+        <div className="form-actions">
+          <button className="primary-action" type="submit">{form.id ? '保存修改' : '新增项目'}</button>
+          {form.id ? (
+            <button type="button" onClick={() => setForm(EMPTY_PROJECT_FORM)}>取消编辑</button>
+          ) : null}
+        </div>
+        <p className="status-message">{message}</p>
+      </form>
+
+      <section className="panel">
+        <div className="panel-heading">
+          <h2>当前项目</h2>
+          <span>{projects.length} 个项目</span>
+        </div>
+        <div className="project-list">
+          {projects.map((project) => (
+            <article className="project-card" key={project.id}>
+              <div className="project-card-heading">
+                <div>
+                  <span>{project.code} · {project.department}</span>
+                  <h3>{project.name}</h3>
+                </div>
+                <button type="button" onClick={() => editProject(project)}>编辑</button>
+              </div>
+              <dl>
+                <div><dt>负责人</dt><dd>{project.owner}</dd></div>
+                <div><dt>分管 VP</dt><dd>{project.supervisingVp}</dd></div>
+                <div><dt>周期</dt><dd>{project.plannedStartDate} 至 {project.plannedEndDate}</dd></div>
+                <div><dt>预算 / 成本</dt><dd>{formatMoney(project.approvedBudget)} / {formatMoney(project.currentCost)}</dd></div>
+              </dl>
+              <p>{project.strategicObjective}</p>
+              <span>{project.milestones.length} 个里程碑</span>
+            </article>
+          ))}
+        </div>
+      </section>
+    </section>
+  )
+}
+
+function AuditCyclesPanel({
+  auditCycles,
+  projects,
+  message,
+  onCreate,
+  onUpdateScope,
+}: {
+  auditCycles: AuditCycle[]
+  projects: Project[]
+  message: string
+  onCreate: (input: { name: string; startDate: string; endDate: string }) => Promise<void>
+  onUpdateScope: (cycleId: string, projectIds: string[]) => Promise<void>
+}) {
+  const [name, setName] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+
+  async function submitCycle(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await onCreate({ name, startDate, endDate })
+    setName('')
+    setStartDate('')
+    setEndDate('')
+  }
+
+  function toggleProject(cycle: AuditCycle, projectId: string, checked: boolean) {
+    const projectIds = checked
+      ? [...cycle.projectIds, projectId]
+      : cycle.projectIds.filter((candidate) => candidate !== projectId)
+
+    void onUpdateScope(cycle.id, projectIds)
+  }
+
+  return (
+    <section className="admin-grid">
+      <form className="panel admin-form compact-form" onSubmit={(event) => void submitCycle(event)}>
+        <div className="panel-heading">
+          <h2>创建审计周期</h2>
+          <span>初始状态：草稿</span>
+        </div>
+        <TextField label="周期名称" required value={name} onChange={setName} />
+        <TextField label="开始日期" required type="date" value={startDate} onChange={setStartDate} />
+        <TextField label="结束日期" required type="date" value={endDate} onChange={setEndDate} />
+        <button className="primary-action" type="submit">创建草稿周期</button>
+        <p className="status-message">{message}</p>
+      </form>
+
+      <section className="cycle-list">
+        {auditCycles.length ? auditCycles.map((cycle) => (
+          <article className="panel cycle-card" key={cycle.id}>
+            <div className="panel-heading">
+              <div>
+                <h2>{cycle.name}</h2>
+                <p>{cycle.startDate} 至 {cycle.endDate}</p>
+              </div>
+              <span className="status-badge">{cycle.status === 'draft' ? '草稿' : cycle.status}</span>
+            </div>
+            <p className="view-description">选择本周期需要审计的项目：</p>
+            <div className="scope-options">
+              {projects.map((project) => (
+                <label key={project.id}>
+                  <input
+                    checked={cycle.projectIds.includes(project.id)}
+                    onChange={(event) => toggleProject(cycle, project.id, event.target.checked)}
+                    type="checkbox"
+                  />
+                  <span><strong>{project.name}</strong>{project.code} · {project.owner}</span>
+                </label>
+              ))}
+            </div>
+            <p className="scope-summary">已选择 {cycle.projectIds.length} 个项目</p>
+          </article>
+        )) : (
+          <section className="panel">
+            <p className="empty-state">尚无审计周期。先创建一个草稿周期，再选择审计范围。</p>
+          </section>
+        )}
+      </section>
+    </section>
+  )
+}
+
+function TextField({
+  label,
+  value,
+  onChange,
+  required = false,
+  type = 'text',
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  required?: boolean
+  type?: 'text' | 'number' | 'date'
+}) {
+  return (
+    <label className="field">
+      <span>{label}{required ? <strong>*</strong> : null}</span>
+      <input
+        required={required}
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
   )
 }
 
