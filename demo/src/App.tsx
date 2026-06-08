@@ -24,6 +24,7 @@ import {
 } from './core/audit-cycle'
 import { saveProjectAuditForm, type AuditChangeRecord } from './core/audit-form'
 import type { ProjectAuditBlueprint } from './core/project-audit-blueprint'
+import { PROJECT_AUDIT_FORM_UI_SCHEMA } from './projectAuditFormUi'
 import './App.css'
 
 const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
@@ -815,6 +816,7 @@ function ProjectAuditInstanceRuntimePanel({
                   formData={selectedInstance.formData}
                   onSubmit={(event) => void submitAuditForm(event)}
                   schema={activeBlueprint.formSchema as RJSFSchema}
+                  uiSchema={PROJECT_AUDIT_FORM_UI_SCHEMA}
                   validator={validator}
                 >
                   <button className="primary-action" type="submit">保存审计表单</button>

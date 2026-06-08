@@ -11,6 +11,7 @@ import {
   type ProjectAuditBlueprint,
 } from './core/project-audit-blueprint'
 import type { LocalStorageAdapter } from './core/storage'
+import { PROJECT_AUDIT_FORM_UI_SCHEMA } from './projectAuditFormUi'
 
 const DEFAULT_DESCRIPTION = [
   '我们需要周期性开展项目审计，检查项目里程碑、战略目标和预算执行情况。',
@@ -242,6 +243,7 @@ function BlueprintPreview({
         </p>
         <Form
           schema={blueprint.formSchema as RJSFSchema}
+          uiSchema={PROJECT_AUDIT_FORM_UI_SCHEMA}
           validator={validator}
           onSubmit={() => undefined}
         />

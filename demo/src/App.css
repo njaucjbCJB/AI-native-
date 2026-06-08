@@ -8,6 +8,7 @@
 .console-shell {
   display: grid;
   grid-template-columns: 260px 1fr;
+  text-align: left;
 }
 
 .console-sidebar {
@@ -248,34 +249,227 @@ button.active,
 }
 
 .section-note {
-  margin: 16px 0;
-  color: #64748b;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  margin: 16px 0 14px;
+  padding: 10px 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
   font-size: 13px;
   line-height: 1.55;
 }
 
-.rjsf-preview fieldset {
+.rjsf-preview,
+.audit-form-shell {
+  text-align: left;
+}
+
+.rjsf-preview form.rjsf,
+.audit-form-shell form.rjsf {
+  display: grid;
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.rjsf-preview form.rjsf > .form-group,
+.audit-form-shell form.rjsf > .form-group {
+  margin: 0;
+}
+
+.rjsf-preview form.rjsf > .form-group > fieldset,
+.audit-form-shell form.rjsf > .form-group > fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.rjsf-preview form.rjsf > .form-group > fieldset > legend,
+.audit-form-shell form.rjsf > .form-group > fieldset > legend {
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.rjsf-preview fieldset,
+.audit-form-shell fieldset {
   min-width: 0;
-  margin: 14px 0;
+  margin: 0;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 14px;
+  background: #f8fafc;
 }
 
-.rjsf-preview legend {
-  padding: 0 6px;
+.rjsf-preview legend,
+.audit-form-shell legend {
+  float: none;
+  width: auto;
+  margin: 0 0 12px;
+  padding: 0;
   color: #172033;
-  font-weight: 750;
+  font-size: 15px;
+  font-weight: 800;
 }
 
-.rjsf-preview .field {
-  margin-bottom: 10px;
+.rjsf-preview .rjsf-field-object > fieldset,
+.audit-form-shell .rjsf-field-object > fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.rjsf-preview .rjsf-field-object > fieldset > legend,
+.audit-form-shell .rjsf-field-object > fieldset > legend,
+.rjsf-preview .rjsf-field-array > fieldset > legend,
+.audit-form-shell .rjsf-field-array > fieldset > legend {
+  grid-column: 1 / -1;
+}
+
+.rjsf-preview .rjsf-field-array,
+.audit-form-shell .rjsf-field-array,
+.rjsf-preview .rjsf-field-string,
+.audit-form-shell .rjsf-field-string {
+  min-width: 0;
+}
+
+.rjsf-preview .rjsf-field-array,
+.audit-form-shell .rjsf-field-array,
+.rjsf-preview .audit-schema-section,
+.audit-form-shell .audit-schema-section {
+  grid-column: 1 / -1;
+}
+
+.rjsf-preview .field,
+.rjsf-preview .form-group,
+.audit-form-shell .field,
+.audit-form-shell .form-group {
+  min-width: 0;
+  margin: 0;
+}
+
+.rjsf-preview label,
+.audit-form-shell label {
+  display: block;
+  margin-bottom: 5px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.rjsf-preview input,
+.rjsf-preview select,
+.rjsf-preview textarea,
+.audit-form-shell input,
+.audit-form-shell select,
+.audit-form-shell textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.rjsf-preview input,
+.rjsf-preview select,
+.audit-form-shell input,
+.audit-form-shell select {
+  min-height: 40px;
+}
+
+.rjsf-preview textarea,
+.audit-form-shell textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.rjsf-preview .array-item,
+.audit-form-shell .array-item {
+  border: 1px solid #dbe3ee;
+  border-radius: 8px;
+  margin-top: 10px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.rjsf-preview .array-item-toolbar,
+.audit-form-shell .array-item-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rjsf-preview button.btn-add,
+.audit-form-shell button.btn-add {
+  width: auto;
+  min-height: 34px;
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.rjsf-preview button.btn-add i,
+.audit-form-shell button.btn-add i,
+.rjsf-preview .array-item-toolbar button i,
+.audit-form-shell .array-item-toolbar button i {
+  display: none;
+}
+
+.rjsf-preview button.btn-add::before,
+.audit-form-shell button.btn-add::before {
+  content: '新增一条';
+}
+
+.rjsf-preview .array-item-toolbar button[title='Remove']::before,
+.audit-form-shell .array-item-toolbar button[title='Remove']::before {
+  content: '删除';
+}
+
+.rjsf-preview .array-item-toolbar button[title='Move up']::before,
+.audit-form-shell .array-item-toolbar button[title='Move up']::before {
+  content: '上移';
+}
+
+.rjsf-preview .array-item-toolbar button[title='Move down']::before,
+.audit-form-shell .array-item-toolbar button[title='Move down']::before {
+  content: '下移';
 }
 
 .rjsf-preview button[type='submit'] {
   border-color: #2563eb;
   background: #2563eb;
   color: #ffffff;
+}
+
+.rjsf-preview .btn,
+.audit-form-shell .btn {
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.rjsf-preview .text-danger,
+.audit-form-shell .text-danger,
+.rjsf-preview .error-detail,
+.audit-form-shell .error-detail {
+  margin-top: 4px;
+  color: #b91c1c;
+  font-size: 12px;
 }
 
 .preview-grid {
@@ -1024,6 +1218,75 @@ textarea {
   overflow-wrap: anywhere;
   color: #475569;
   font-size: 12px;
+}
+
+.rjsf-preview form.rjsf,
+.audit-form-shell form.rjsf {
+  gap: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.rjsf-preview form.rjsf > .form-group > fieldset,
+.audit-form-shell form.rjsf > .form-group > fieldset {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.rjsf-preview .rjsf-field-object > fieldset,
+.audit-form-shell .rjsf-field-object > fieldset {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fafc;
+}
+
+.rjsf-preview form.rjsf > .form-group > fieldset > legend,
+.audit-form-shell form.rjsf > .form-group > fieldset > legend {
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #0f172a;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.rjsf-preview .rjsf-field-object > fieldset > legend,
+.audit-form-shell .rjsf-field-object > fieldset > legend,
+.rjsf-preview .rjsf-field-array > fieldset > legend,
+.audit-form-shell .rjsf-field-array > fieldset > legend {
+  grid-column: 1 / -1;
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+  font-size: 15px;
+}
+
+.rjsf-preview label,
+.audit-form-shell label {
+  margin-bottom: 5px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.rjsf-preview input,
+.rjsf-preview select,
+.rjsf-preview textarea,
+.audit-form-shell input,
+.audit-form-shell select,
+.audit-form-shell textarea {
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
 }
 
 @media (max-width: 860px) {
