@@ -1,4 +1,5 @@
 import type { AgentActivity } from './agent-activity'
+import type { AiCeoAssessment } from './ai-ceo-assessment'
 import type { AuditChangeRecord } from './audit-form'
 import type { ApprovalRecord } from './audit-workflow'
 import type { ArchiveRecord } from './archive'
@@ -26,6 +27,7 @@ const AUDIT_CYCLES_KEY = 'aiof.auditCycles'
 const PROJECT_AUDIT_INSTANCES_KEY = 'aiof.projectAuditInstances'
 const AUDIT_CHANGE_RECORDS_KEY = 'aiof.auditChangeRecords'
 const APPROVAL_RECORDS_KEY = 'aiof.approvalRecords'
+const AI_CEO_ASSESSMENTS_KEY = 'aiof.aiCeoAssessments'
 
 export class MemoryStorage implements StorageLike {
   private items = new Map<string, string>()
@@ -272,6 +274,24 @@ export class LocalStorageAdapter {
     this.writeJson(APPROVAL_RECORDS_KEY, [...records, record])
   }
 
+  async getAiCeoAssessments(instanceId?: string): Promise<AiCeoAssessment[]> {
+    const assessments = this.readJson<AiCeoAssessment[]>(AI_CEO_ASSESSMENTS_KEY, [])
+
+    return instanceId
+      ? assessments.filter((assessment) => assessment.instanceId === instanceId)
+      : assessments
+  }
+
+  async saveAiCeoAssessment(assessment: AiCeoAssessment): Promise<void> {
+    const assessments = await this.getAiCeoAssessments()
+    const nextAssessments = [
+      ...assessments.filter((existing) => existing.id !== assessment.id),
+      assessment,
+    ]
+
+    this.writeJson(AI_CEO_ASSESSMENTS_KEY, nextAssessments)
+  }
+
   async resetDemoData(): Promise<void> {
     this.storage.removeItem(BLUEPRINTS_KEY)
     this.storage.removeItem(ACTIVE_BLUEPRINT_KEY)
@@ -287,6 +307,7 @@ export class LocalStorageAdapter {
     this.storage.removeItem(PROJECT_AUDIT_INSTANCES_KEY)
     this.storage.removeItem(AUDIT_CHANGE_RECORDS_KEY)
     this.storage.removeItem(APPROVAL_RECORDS_KEY)
+    this.storage.removeItem(AI_CEO_ASSESSMENTS_KEY)
   }
 
   private readJson<T>(key: string, fallback: T): T {

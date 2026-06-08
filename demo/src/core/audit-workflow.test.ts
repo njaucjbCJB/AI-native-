@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { createDraftAuditCycle, startAuditCycle, updateAuditScope } from './audit-cycle'
 import {
+  approveAiCeoProjectAuditInstance,
   approveProjectOwnerSelfApproval,
+  approveVpProjectAuditInstance,
+  rejectVpProjectAuditInstance,
   submitProjectAuditInstance,
   withdrawProjectAuditInstance,
 } from './audit-workflow'
@@ -69,9 +72,73 @@ describe('Project owner audit workflow', () => {
       }),
     ).rejects.toThrow('Only the project owner can withdraw this audit instance.')
   })
+
+  it('lets the supervising VP approve or reject with a required comment and forces rework through owner self-approval', async () => {
+    const storage = new LocalStorageAdapter(new MemoryStorage())
+    const instance = await createWorkflowFixture(storage)
+    const owner = instance.projectSnapshot.projectOwner
+    const vp = instance.projectSnapshot.supervisingVp
+    await submitProjectAuditInstance(storage, instance.id, { actor: owner })
+    await approveProjectOwnerSelfApproval(storage, instance.id, { actor: owner })
+
+    const vpApproved = await approveVpProjectAuditInstance(storage, instance.id, {
+      actor: vp,
+      id: () => 'approval-vp-1',
+      now: () => new Date('2026-06-08T05:00:00.000Z'),
+    })
+
+    expect(vpApproved.status).toBe('ai_ceo_approval')
+    await expect(storage.getApprovalRecords(instance.id)).resolves.toContainEqual({
+      id: 'approval-vp-1',
+      instanceId: instance.id,
+      actor: vp,
+      roleId: 'supervising_vp',
+      decision: 'approved',
+      decidedAt: '2026-06-08T05:00:00.000Z',
+      fromStatus: 'vp_approval',
+      toStatus: 'ai_ceo_approval',
+    })
+
+    await approveAiCeoProjectAuditInstance(storage, instance.id, {
+      actor: 'AI CEO',
+    })
+    const reworkFixture = await createWorkflowFixture(storage, 'audit-instance-rework')
+    await submitProjectAuditInstance(storage, reworkFixture.id, { actor: owner })
+    await approveProjectOwnerSelfApproval(storage, reworkFixture.id, { actor: owner })
+
+    await expect(
+      rejectVpProjectAuditInstance(storage, reworkFixture.id, {
+        actor: vp,
+      }),
+    ).rejects.toThrow('A VP rejection comment is required.')
+
+    const rejected = await rejectVpProjectAuditInstance(storage, reworkFixture.id, {
+      actor: vp,
+      comment: 'Budget evidence needs clarification.',
+      id: () => 'reject-vp-1',
+      now: () => new Date('2026-06-08T05:10:00.000Z'),
+    })
+
+    expect(rejected.status).toBe('rework')
+
+    const resubmitted = await submitProjectAuditInstance(storage, reworkFixture.id, {
+      actor: owner,
+    })
+    expect(resubmitted.status).toBe('owner_self_approval')
+
+    const reapproved = await approveProjectOwnerSelfApproval(
+      storage,
+      reworkFixture.id,
+      { actor: owner },
+    )
+    expect(reapproved.status).toBe('vp_approval')
+  })
 })
 
-async function createWorkflowFixture(storage: LocalStorageAdapter) {
+async function createWorkflowFixture(
+  storage: LocalStorageAdapter,
+  instanceId = 'audit-instance-project-data-platform',
+) {
   const generationResult = generateProjectAuditBlueprint('生成项目审计流程。')
 
   if (generationResult.status !== 'generated') {
@@ -87,7 +154,7 @@ async function createWorkflowFixture(storage: LocalStorageAdapter) {
   })
   await updateAuditScope(storage, cycle.id, [projects[0].id])
   const result = await startAuditCycle(storage, cycle.id, {
-    id: (projectId) => `audit-instance-${projectId}`,
+    id: () => instanceId,
   })
 
   return result.instances[0]

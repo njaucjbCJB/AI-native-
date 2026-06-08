@@ -5,8 +5,8 @@ export type ApprovalRecord = {
   id: string
   instanceId: string
   actor: string
-  roleId: 'project_owner'
-  decision: 'approved' | 'withdrawn'
+  roleId: 'project_owner' | 'supervising_vp' | 'ai_ceo'
+  decision: 'approved' | 'rejected' | 'withdrawn'
   comment?: string
   decidedAt: string
   fromStatus: ProjectAuditInstanceStatus
@@ -30,6 +30,10 @@ type ProjectAuditWorkflowEvent =
   | { type: 'SUBMIT' }
   | { type: 'OWNER_APPROVE' }
   | { type: 'WITHDRAW' }
+  | { type: 'VP_APPROVE' }
+  | { type: 'VP_REJECT' }
+  | { type: 'AI_CEO_APPROVE' }
+  | { type: 'AI_CEO_REJECT' }
 
 const projectAuditWorkflowMachine = createMachine({
   id: 'projectAuditWorkflow',
@@ -49,9 +53,16 @@ const projectAuditWorkflowMachine = createMachine({
     vp_approval: {
       on: {
         WITHDRAW: 'draft',
+        VP_APPROVE: 'ai_ceo_approval',
+        VP_REJECT: 'rework',
       },
     },
-    ai_ceo_approval: {},
+    ai_ceo_approval: {
+      on: {
+        AI_CEO_APPROVE: 'approved',
+        AI_CEO_REJECT: 'rework',
+      },
+    },
     rework: {
       on: {
         SUBMIT: 'owner_self_approval',
@@ -94,7 +105,7 @@ export async function approveProjectOwnerSelfApproval(
   const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
 
   await storage.saveApprovalRecord(
-    createApprovalRecord(instance, saved, 'approved', options),
+    createApprovalRecord(instance, saved, 'approved', 'project_owner', options),
   )
 
   return saved
@@ -116,7 +127,89 @@ export async function withdrawProjectAuditInstance(
   const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
 
   await storage.saveApprovalRecord(
-    createApprovalRecord(instance, saved, 'withdrawn', options),
+    createApprovalRecord(instance, saved, 'withdrawn', 'project_owner', options),
+  )
+
+  return saved
+}
+
+export async function approveVpProjectAuditInstance(
+  storage: AuditWorkflowStorage,
+  instanceId: string,
+  options: WorkflowOptions,
+): Promise<ProjectAuditInstance> {
+  const instance = await findInstance(storage, instanceId)
+  assertSupervisingVp(instance, options.actor)
+  assertStatus(instance, 'vp_approval', 'Only instances waiting for VP approval can be approved.')
+  const nextStatus = getNextStatus(instance.status, { type: 'VP_APPROVE' })
+  const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
+
+  await storage.saveApprovalRecord(
+    createApprovalRecord(instance, saved, 'approved', 'supervising_vp', options),
+  )
+
+  return saved
+}
+
+export async function rejectVpProjectAuditInstance(
+  storage: AuditWorkflowStorage,
+  instanceId: string,
+  options: WorkflowOptions,
+): Promise<ProjectAuditInstance> {
+  const instance = await findInstance(storage, instanceId)
+  assertSupervisingVp(instance, options.actor)
+  assertStatus(instance, 'vp_approval', 'Only instances waiting for VP approval can be rejected.')
+  assertRequiredComment(options.comment, 'A VP rejection comment is required.')
+  const nextStatus = getNextStatus(instance.status, { type: 'VP_REJECT' })
+  const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
+
+  await storage.saveApprovalRecord(
+    createApprovalRecord(instance, saved, 'rejected', 'supervising_vp', options),
+  )
+
+  return saved
+}
+
+export async function approveAiCeoProjectAuditInstance(
+  storage: AuditWorkflowStorage,
+  instanceId: string,
+  options: WorkflowOptions,
+): Promise<ProjectAuditInstance> {
+  const instance = await findInstance(storage, instanceId)
+  assertAiCeo(options.actor)
+  assertStatus(
+    instance,
+    'ai_ceo_approval',
+    'Only instances waiting for AI CEO approval can be approved.',
+  )
+  const nextStatus = getNextStatus(instance.status, { type: 'AI_CEO_APPROVE' })
+  const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
+
+  await storage.saveApprovalRecord(
+    createApprovalRecord(instance, saved, 'approved', 'ai_ceo', options),
+  )
+
+  return saved
+}
+
+export async function rejectAiCeoProjectAuditInstance(
+  storage: AuditWorkflowStorage,
+  instanceId: string,
+  options: WorkflowOptions,
+): Promise<ProjectAuditInstance> {
+  const instance = await findInstance(storage, instanceId)
+  assertAiCeo(options.actor)
+  assertStatus(
+    instance,
+    'ai_ceo_approval',
+    'Only instances waiting for AI CEO approval can be rejected.',
+  )
+  assertRequiredComment(options.comment, 'An AI CEO rejection comment is required.')
+  const nextStatus = getNextStatus(instance.status, { type: 'AI_CEO_REJECT' })
+  const saved = await saveInstanceStatus(storage, instance, nextStatus, options)
+
+  await storage.saveApprovalRecord(
+    createApprovalRecord(instance, saved, 'rejected', 'ai_ceo', options),
   )
 
   return saved
@@ -139,6 +232,34 @@ async function findInstance(
 function assertProjectOwner(instance: ProjectAuditInstance, actor: string): void {
   if (instance.projectSnapshot.projectOwner !== actor) {
     throw new Error('Only the project owner can withdraw this audit instance.')
+  }
+}
+
+function assertSupervisingVp(instance: ProjectAuditInstance, actor: string): void {
+  if (instance.projectSnapshot.supervisingVp !== actor) {
+    throw new Error('Only the supervising VP can approve this audit instance.')
+  }
+}
+
+function assertAiCeo(actor: string): void {
+  if (actor !== 'AI CEO') {
+    throw new Error('Only AI CEO can approve this audit instance.')
+  }
+}
+
+function assertStatus(
+  instance: ProjectAuditInstance,
+  status: ProjectAuditInstanceStatus,
+  message: string,
+): void {
+  if (instance.status !== status) {
+    throw new Error(message)
+  }
+}
+
+function assertRequiredComment(comment: string | undefined, message: string): void {
+  if (!comment?.trim()) {
+    throw new Error(message)
   }
 }
 
@@ -176,13 +297,14 @@ function createApprovalRecord(
   previous: ProjectAuditInstance,
   next: ProjectAuditInstance,
   decision: ApprovalRecord['decision'],
+  roleId: ApprovalRecord['roleId'],
   options: WorkflowOptions,
 ): ApprovalRecord {
   return {
     id: (options.id ?? (() => crypto.randomUUID()))(),
     instanceId: previous.id,
     actor: options.actor,
-    roleId: 'project_owner',
+    roleId,
     decision,
     ...(options.comment ? { comment: options.comment } : {}),
     decidedAt: next.updatedAt,

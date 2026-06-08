@@ -1170,6 +1170,45 @@ textarea {
   opacity: 0.45;
 }
 
+.ai-ceo-assessment-card {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #eff6ff;
+}
+
+.ai-ceo-assessment-card span {
+  display: block;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.ai-ceo-assessment-card strong {
+  display: block;
+  margin-top: 3px;
+  color: #0f172a;
+}
+
+.ai-ceo-assessment-card ul {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 18px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.ai-ceo-assessment-card p {
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .audit-runtime-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);

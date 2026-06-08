@@ -21,10 +21,18 @@ import {
 } from './core/audit-permissions'
 import {
   approveProjectOwnerSelfApproval,
+  approveAiCeoProjectAuditInstance,
+  approveVpProjectAuditInstance,
+  rejectAiCeoProjectAuditInstance,
+  rejectVpProjectAuditInstance,
   submitProjectAuditInstance,
   withdrawProjectAuditInstance,
   type ApprovalRecord,
 } from './core/audit-workflow'
+import {
+  createAiCeoAssessment,
+  type AiCeoAssessment,
+} from './core/ai-ceo-assessment'
 import {
   createDraftAuditCycle,
   startAuditCycle,
@@ -63,6 +71,21 @@ const PROJECT_AUDIT_STATUS_LABELS: Record<ProjectAuditInstance['status'], string
   approved: '已通过',
 }
 
+const AI_CEO_RISK_LABELS: Record<AiCeoAssessment['riskLevel'], string> = {
+  low: '低风险',
+  medium: '中风险',
+  high: '高风险',
+}
+
+const AI_CEO_RECOMMENDATION_LABELS: Record<
+  AiCeoAssessment['recommendation'],
+  string
+> = {
+  approve: '建议通过',
+  review: '建议审慎确认',
+  reject: '建议退回',
+}
+
 const INITIAL_FORM_DATA: RequestData = {
   itemName: 'Security audit',
   department: 'Engineering',
@@ -87,6 +110,7 @@ function App() {
   const [projectAuditInstances, setProjectAuditInstances] = useState<ProjectAuditInstance[]>([])
   const [auditChangeRecords, setAuditChangeRecords] = useState<AuditChangeRecord[]>([])
   const [approvalRecords, setApprovalRecords] = useState<ApprovalRecord[]>([])
+  const [aiCeoAssessments, setAiCeoAssessments] = useState<AiCeoAssessment[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
   const [activeView, setActiveView] = useState<AppViewId>('project-audit-blueprint')
@@ -108,6 +132,7 @@ function App() {
       nextProjectAuditInstances,
       nextAuditChangeRecords,
       nextApprovalRecords,
+      nextAiCeoAssessments,
     ] = await Promise.all([
       storage.getRequestInstances(),
       storage.getWorkflowInstances(),
@@ -118,6 +143,7 @@ function App() {
       storage.getProjectAuditInstances(),
       storage.getAuditChangeRecords(),
       storage.getApprovalRecords(),
+      storage.getAiCeoAssessments(),
     ])
 
     setRequests(nextRequests)
@@ -129,6 +155,7 @@ function App() {
     setProjectAuditInstances(nextProjectAuditInstances)
     setAuditChangeRecords(nextAuditChangeRecords)
     setApprovalRecords(nextApprovalRecords)
+    setAiCeoAssessments(nextAiCeoAssessments)
   }, [storage])
 
   useEffect(() => {
@@ -292,6 +319,89 @@ function App() {
     }
   }
 
+  async function handleApproveVpProjectAuditInstance(
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) {
+    try {
+      const approved = await approveVpProjectAuditInstance(storage, instanceId, {
+        actor: actor.name,
+        comment: comment.trim() || undefined,
+      })
+
+      await refreshRuntimeState()
+      setMessage(`VP 已通过 ${approved.projectSnapshot.projectName}，进入 AI CEO 审批`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'VP 审批失败')
+    }
+  }
+
+  async function handleRejectVpProjectAuditInstance(
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) {
+    try {
+      const rejected = await rejectVpProjectAuditInstance(storage, instanceId, {
+        actor: actor.name,
+        comment,
+      })
+
+      await refreshRuntimeState()
+      setMessage(`VP 已驳回 ${rejected.projectSnapshot.projectName}，退回项目负责人修改`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'VP 驳回失败')
+    }
+  }
+
+  async function handleGenerateAiCeoAssessment(instanceId: string) {
+    try {
+      const assessment = await createAiCeoAssessment(storage, instanceId)
+
+      await refreshRuntimeState()
+      setMessage(`已生成 AI CEO 建议：${AI_CEO_RISK_LABELS[assessment.riskLevel]}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'AI CEO 建议生成失败')
+    }
+  }
+
+  async function handleApproveAiCeoProjectAuditInstance(
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) {
+    try {
+      const approved = await approveAiCeoProjectAuditInstance(storage, instanceId, {
+        actor: actor.name,
+        comment: comment.trim() || undefined,
+      })
+
+      await refreshRuntimeState()
+      setMessage(`AI CEO 已最终批准 ${approved.projectSnapshot.projectName}`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'AI CEO 批准失败')
+    }
+  }
+
+  async function handleRejectAiCeoProjectAuditInstance(
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) {
+    try {
+      const rejected = await rejectAiCeoProjectAuditInstance(storage, instanceId, {
+        actor: actor.name,
+        comment,
+      })
+
+      await refreshRuntimeState()
+      setMessage(`AI CEO 已驳回 ${rejected.projectSnapshot.projectName}，退回项目负责人修改`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'AI CEO 驳回失败')
+    }
+  }
+
   function updateField(field: FormField, value: string) {
     setFormData((current) => ({
       ...current,
@@ -334,10 +444,16 @@ function App() {
         <AuditCyclesPanel
           auditCycles={auditCycles}
           auditChangeRecords={auditChangeRecords}
+          aiCeoAssessments={aiCeoAssessments}
           approvalRecords={approvalRecords}
           message={message}
           onCreate={handleCreateAuditCycle}
           onApproveOwnerSelfApproval={handleApproveProjectOwnerSelfApproval}
+          onApproveAiCeo={handleApproveAiCeoProjectAuditInstance}
+          onApproveVp={handleApproveVpProjectAuditInstance}
+          onGenerateAiCeoAssessment={handleGenerateAiCeoAssessment}
+          onRejectAiCeo={handleRejectAiCeoProjectAuditInstance}
+          onRejectVp={handleRejectVpProjectAuditInstance}
           onSubmitProjectAuditInstance={handleSubmitProjectAuditInstance}
           onSaveAuditForm={handleSaveAuditForm}
           onStart={handleStartAuditCycle}
@@ -672,12 +788,18 @@ function ProjectRegistryPanel({
 function AuditCyclesPanel({
   auditCycles,
   auditChangeRecords,
+  aiCeoAssessments,
   approvalRecords,
   projects,
   projectAuditInstances,
   message,
   onCreate,
   onApproveOwnerSelfApproval,
+  onApproveAiCeo,
+  onApproveVp,
+  onGenerateAiCeoAssessment,
+  onRejectAiCeo,
+  onRejectVp,
   onSaveAuditForm,
   onStart,
   onSubmitProjectAuditInstance,
@@ -687,6 +809,7 @@ function AuditCyclesPanel({
 }: {
   auditCycles: AuditCycle[]
   auditChangeRecords: AuditChangeRecord[]
+  aiCeoAssessments: AiCeoAssessment[]
   approvalRecords: ApprovalRecord[]
   projects: Project[]
   projectAuditInstances: ProjectAuditInstance[]
@@ -695,6 +818,27 @@ function AuditCyclesPanel({
   onApproveOwnerSelfApproval: (
     instanceId: string,
     actor: ProjectAuditActor,
+  ) => Promise<void>
+  onApproveAiCeo: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onApproveVp: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onGenerateAiCeoAssessment: (instanceId: string) => Promise<void>
+  onRejectAiCeo: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onRejectVp: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
   ) => Promise<void>
   onSaveAuditForm: (
     instanceId: string,
@@ -793,9 +937,15 @@ function AuditCyclesPanel({
       </section>
       <ProjectAuditInstanceRuntimePanel
         auditChangeRecords={auditChangeRecords}
+        aiCeoAssessments={aiCeoAssessments}
         approvalRecords={approvalRecords}
         instances={projectAuditInstances}
         onApproveOwnerSelfApproval={onApproveOwnerSelfApproval}
+        onApproveAiCeo={onApproveAiCeo}
+        onApproveVp={onApproveVp}
+        onGenerateAiCeoAssessment={onGenerateAiCeoAssessment}
+        onRejectAiCeo={onRejectAiCeo}
+        onRejectVp={onRejectVp}
         onSaveAuditForm={onSaveAuditForm}
         onSubmitProjectAuditInstance={onSubmitProjectAuditInstance}
         onWithdrawProjectAuditInstance={onWithdrawProjectAuditInstance}
@@ -808,9 +958,15 @@ function AuditCyclesPanel({
 
 function ProjectAuditInstanceRuntimePanel({
   auditChangeRecords,
+  aiCeoAssessments,
   approvalRecords,
   instances,
   onApproveOwnerSelfApproval,
+  onApproveAiCeo,
+  onApproveVp,
+  onGenerateAiCeoAssessment,
+  onRejectAiCeo,
+  onRejectVp,
   onSaveAuditForm,
   onSubmitProjectAuditInstance,
   onWithdrawProjectAuditInstance,
@@ -818,11 +974,33 @@ function ProjectAuditInstanceRuntimePanel({
   storage,
 }: {
   auditChangeRecords: AuditChangeRecord[]
+  aiCeoAssessments: AiCeoAssessment[]
   approvalRecords: ApprovalRecord[]
   instances: ProjectAuditInstance[]
   onApproveOwnerSelfApproval: (
     instanceId: string,
     actor: ProjectAuditActor,
+  ) => Promise<void>
+  onApproveAiCeo: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onApproveVp: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onGenerateAiCeoAssessment: (instanceId: string) => Promise<void>
+  onRejectAiCeo: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
+  ) => Promise<void>
+  onRejectVp: (
+    instanceId: string,
+    actor: ProjectAuditActor,
+    comment: string,
   ) => Promise<void>
   onSaveAuditForm: (
     instanceId: string,
@@ -847,6 +1025,7 @@ function ProjectAuditInstanceRuntimePanel({
     PROJECT_AUDIT_ACTORS[1],
   )
   const [reason, setReason] = useState('')
+  const [decisionComment, setDecisionComment] = useState('')
   const visibleInstances = activeBlueprint
     ? getVisibleProjectAuditInstances(activeBlueprint, instances, selectedActor)
     : instances
@@ -892,6 +1071,11 @@ function ProjectAuditInstanceRuntimePanel({
   const selectedApprovalRecords = selectedInstance
     ? approvalRecords.filter((record) => record.instanceId === selectedInstance.id)
     : []
+  const selectedAiCeoAssessment = selectedInstance
+    ? aiCeoAssessments
+        .filter((assessment) => assessment.instanceId === selectedInstance.id)
+        .at(-1) ?? null
+    : null
   const fieldAccess =
     selectedInstance && activeBlueprint
       ? getFieldAccess(activeBlueprint, selectedInstance, selectedActor, 'ownerSummary')
@@ -910,6 +1094,14 @@ function ProjectAuditInstanceRuntimePanel({
     selectedActor.roleId === 'project_owner' &&
     (selectedInstance.status === 'owner_self_approval' ||
       selectedInstance.status === 'vp_approval')
+  const canVpApprove =
+    selectedInstance !== null &&
+    selectedActor.roleId === 'supervising_vp' &&
+    selectedInstance.status === 'vp_approval'
+  const canAiCeoApprove =
+    selectedInstance !== null &&
+    selectedActor.roleId === 'ai_ceo' &&
+    selectedInstance.status === 'ai_ceo_approval'
 
   return (
     <section className="panel audit-runtime-panel">
@@ -997,8 +1189,65 @@ function ProjectAuditInstanceRuntimePanel({
                   >
                     撤回
                   </button>
+                  <button
+                    disabled={!canVpApprove}
+                    onClick={() => void onApproveVp(selectedInstance.id, selectedActor, decisionComment)}
+                    type="button"
+                  >
+                    VP 通过
+                  </button>
+                  <button
+                    disabled={!canVpApprove}
+                    onClick={() => void onRejectVp(selectedInstance.id, selectedActor, decisionComment)}
+                    type="button"
+                  >
+                    VP 驳回
+                  </button>
+                  <button
+                    disabled={!canAiCeoApprove}
+                    onClick={() => void onGenerateAiCeoAssessment(selectedInstance.id)}
+                    type="button"
+                  >
+                    生成 AI 建议
+                  </button>
+                  <button
+                    disabled={!canAiCeoApprove}
+                    onClick={() => void onApproveAiCeo(selectedInstance.id, selectedActor, decisionComment)}
+                    type="button"
+                  >
+                    AI CEO 批准
+                  </button>
+                  <button
+                    disabled={!canAiCeoApprove}
+                    onClick={() => void onRejectAiCeo(selectedInstance.id, selectedActor, decisionComment)}
+                    type="button"
+                  >
+                    AI CEO 驳回
+                  </button>
                   <span>{canEditForm ? '可编辑' : fieldAccess === 'read' ? '只读' : '不可见'}</span>
                 </div>
+                <label className="field">
+                  <span>审批意见</span>
+                  <textarea
+                    placeholder="驳回时必填，通过时可选"
+                    value={decisionComment}
+                    onChange={(event) => setDecisionComment(event.target.value)}
+                  />
+                </label>
+                {selectedAiCeoAssessment ? (
+                  <div className="ai-ceo-assessment-card">
+                    <div>
+                      <span>AI CEO 建议</span>
+                      <strong>{AI_CEO_RISK_LABELS[selectedAiCeoAssessment.riskLevel]} · {AI_CEO_RECOMMENDATION_LABELS[selectedAiCeoAssessment.recommendation]}</strong>
+                    </div>
+                    <ul>
+                      {selectedAiCeoAssessment.keyFindings.map((finding) => (
+                        <li key={finding}>{finding}</li>
+                      ))}
+                    </ul>
+                    <p>{selectedAiCeoAssessment.rationale}</p>
+                  </div>
+                ) : null}
                 <label className="field">
                   <span>关键字段修改原因</span>
                   <textarea
