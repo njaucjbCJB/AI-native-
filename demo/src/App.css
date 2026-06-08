@@ -105,6 +105,12 @@ button.active,
   color: #ffffff;
 }
 
+.danger-action {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+}
+
 .blueprint-console {
   display: grid;
   grid-template-columns: minmax(320px, 0.85fr) minmax(190px, 0.35fr);

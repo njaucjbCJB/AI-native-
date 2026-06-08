@@ -216,6 +216,140 @@ export async function startAuditCycle(
   return { cycle: startedCycle, instances }
 }
 
+export async function addProjectsToStartedAuditCycle(
+  storage: ProjectAuditInstanceStorage,
+  cycleId: string,
+  projectIds: string[],
+  options: StartAuditCycleOptions = {},
+): Promise<{ cycle: AuditCycle; instances: ProjectAuditInstance[] }> {
+  const cycles = await storage.getAuditCycles()
+  const cycle = cycles.find((candidate) => candidate.id === cycleId)
+
+  if (!cycle) {
+    throw new Error(`Audit cycle ${cycleId} was not found.`)
+  }
+
+  if (cycle.status !== 'started') {
+    throw new Error('Projects can only be added to a started audit cycle.')
+  }
+
+  const blueprint = await storage.getActiveBlueprintVersion()
+
+  if (!blueprint || blueprint.version === null) {
+    throw new Error('A deployed active Blueprint version is required.')
+  }
+
+  const [projects, existingInstances] = await Promise.all([
+    storage.getProjects(),
+    storage.getProjectAuditInstances(),
+  ])
+  const newProjectIds = [...new Set(projectIds)].filter(
+    (projectId) => !cycle.projectIds.includes(projectId),
+  )
+  const timestamp = (options.now ?? (() => new Date()))().toISOString()
+  const instances = newProjectIds.map((projectId) => {
+    const project = projects.find((candidate) => candidate.id === projectId)
+
+    if (!project) {
+      throw new Error(`Project ${projectId} was not found.`)
+    }
+
+    const duplicate = existingInstances.some(
+      (instance) => instance.cycleId === cycle.id && instance.projectId === project.id,
+    )
+
+    if (duplicate) {
+      throw new Error(
+        `Project ${project.id} already has an audit instance in cycle ${cycle.id}.`,
+      )
+    }
+
+    return createProjectAuditInstance(project, cycle, blueprint, timestamp, options)
+  })
+
+  const updatedCycle: AuditCycle = {
+    ...cycle,
+    projectIds: [...cycle.projectIds, ...newProjectIds],
+    updatedAt: timestamp,
+  }
+
+  for (const instance of instances) {
+    await storage.saveProjectAuditInstance(instance)
+  }
+
+  await storage.saveAuditCycle(updatedCycle)
+
+  return { cycle: updatedCycle, instances }
+}
+
+export async function removeProjectsFromStartedAuditCycle(
+  storage: ProjectAuditInstanceStorage,
+  cycleId: string,
+  projectIds: string[],
+  options: Pick<AuditCycleOptions, 'now'> = {},
+): Promise<AuditCycle> {
+  const cycles = await storage.getAuditCycles()
+  const cycle = cycles.find((candidate) => candidate.id === cycleId)
+
+  if (!cycle) {
+    throw new Error(`Audit cycle ${cycleId} was not found.`)
+  }
+
+  if (cycle.status !== 'started') {
+    throw new Error('Projects can only be removed from a started audit cycle.')
+  }
+
+  const instances = await storage.getProjectAuditInstances()
+  const projectIdsToRemove = new Set(projectIds)
+  const startedInstances = instances.filter(
+    (instance) =>
+      instance.cycleId === cycle.id &&
+      projectIdsToRemove.has(instance.projectId) &&
+      instance.status !== 'draft',
+  )
+
+  if (startedInstances.length > 0) {
+    throw new Error('Projects with started audit instances cannot be removed.')
+  }
+
+  const updatedCycle: AuditCycle = {
+    ...cycle,
+    projectIds: cycle.projectIds.filter((projectId) => !projectIdsToRemove.has(projectId)),
+    updatedAt: (options.now ?? (() => new Date()))().toISOString(),
+  }
+
+  await storage.saveAuditCycle(updatedCycle)
+
+  return updatedCycle
+}
+
+export async function closeAuditCycle(
+  storage: AuditCycleStorage,
+  cycleId: string,
+  options: Pick<AuditCycleOptions, 'now'> = {},
+): Promise<AuditCycle> {
+  const cycles = await storage.getAuditCycles()
+  const cycle = cycles.find((candidate) => candidate.id === cycleId)
+
+  if (!cycle) {
+    throw new Error(`Audit cycle ${cycleId} was not found.`)
+  }
+
+  if (cycle.status !== 'started') {
+    throw new Error('Only a started audit cycle can be closed.')
+  }
+
+  const closedCycle: AuditCycle = {
+    ...cycle,
+    status: 'closed',
+    updatedAt: (options.now ?? (() => new Date()))().toISOString(),
+  }
+
+  await storage.saveAuditCycle(closedCycle)
+
+  return closedCycle
+}
+
 function createProjectAuditInstance(
   project: Project,
   cycle: AuditCycle,

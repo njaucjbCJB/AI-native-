@@ -5,7 +5,7 @@ import validator from '@rjsf/validator-ajv8'
 import type { RJSFSchema } from '@rjsf/utils'
 import { runApproveCurrentStep, runRejectCurrentStep, type AgentActivity } from './core/agent-activity'
 import type { WorkflowInstance } from './core/workflow'
-import { generateBlueprintFromRequirement, type Blueprint, type FormField } from './core/blueprint'
+import type { Blueprint, FormField } from './core/blueprint'
 import { LocalStorageAdapter } from './core/storage'
 import { submitRuntimeRequest, type RuntimeSubmissionResult } from './core/runtime'
 import type { ApprovalRole } from './core/approval-routing'
@@ -13,7 +13,7 @@ import type { RequestData, RequestInstance } from './core/request'
 import { generateReportFromRuntimeStorage, type ReportSnapshot } from './core/report'
 import { getFrameworkConsoleViews, type ConsoleView, type ConsoleViewId } from './core/console'
 import { ProjectAuditBlueprintConsole } from './ProjectAuditBlueprintConsole'
-import { initializeProjectRegistry, type Project } from './core/project'
+import type { Project } from './core/project'
 import {
   getFieldAccess,
   getVisibleProjectAuditInstances,
@@ -34,7 +34,10 @@ import {
   type AiCeoAssessment,
 } from './core/ai-ceo-assessment'
 import {
+  addProjectsToStartedAuditCycle,
+  closeAuditCycle,
   createDraftAuditCycle,
+  removeProjectsFromStartedAuditCycle,
   startAuditCycle,
   updateAuditScope,
   type AuditCycle,
@@ -42,11 +45,13 @@ import {
   type ProjectAuditInstance,
 } from './core/audit-cycle'
 import { saveProjectAuditForm, type AuditChangeRecord } from './core/audit-form'
+import {
+  initializeProjectAuditDemo,
+  resetProjectAuditDemoData,
+} from './core/demo-scenario'
 import type { ProjectAuditBlueprint } from './core/project-audit-blueprint'
 import { PROJECT_AUDIT_FORM_UI_SCHEMA } from './projectAuditFormUi'
 import './App.css'
-
-const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
 
 const ROLE_LABELS: Record<ApprovalRole, string> = {
   department_manager: '部门经理',
@@ -71,6 +76,12 @@ const PROJECT_AUDIT_STATUS_LABELS: Record<ProjectAuditInstance['status'], string
   approved: '已通过',
 }
 
+const AUDIT_CYCLE_STATUS_LABELS: Record<AuditCycle['status'], string> = {
+  draft: '草稿',
+  started: '已启动',
+  closed: '已关闭',
+}
+
 const AI_CEO_RISK_LABELS: Record<AiCeoAssessment['riskLevel'], string> = {
   low: '低风险',
   medium: '中风险',
@@ -84,6 +95,27 @@ const AI_CEO_RECOMMENDATION_LABELS: Record<
   approve: '建议通过',
   review: '建议审慎确认',
   reject: '建议退回',
+}
+
+const APPROVAL_RECORD_LABELS: Record<
+  ApprovalRecord['roleId'],
+  Record<ApprovalRecord['decision'], string>
+> = {
+  project_owner: {
+    approved: '负责人自审批通过',
+    rejected: '负责人驳回',
+    withdrawn: '负责人撤回',
+  },
+  supervising_vp: {
+    approved: 'VP 通过',
+    rejected: 'VP 驳回',
+    withdrawn: 'VP 撤回',
+  },
+  ai_ceo: {
+    approved: 'AI CEO 批准',
+    rejected: 'AI CEO 驳回',
+    withdrawn: 'AI CEO 撤回',
+  },
 }
 
 const INITIAL_FORM_DATA: RequestData = {
@@ -115,6 +147,8 @@ function App() {
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
   const [activeView, setActiveView] = useState<AppViewId>('project-audit-blueprint')
   const [message, setMessage] = useState('Runtime ready')
+  const [resetConfirmArmed, setResetConfirmArmed] = useState(false)
+  const [demoResetRevision, setDemoResetRevision] = useState(0)
   const consoleViews = useMemo(
     () => (blueprint ? getFrameworkConsoleViews(blueprint) : []),
     [blueprint],
@@ -160,12 +194,8 @@ function App() {
 
   useEffect(() => {
     async function initializeRuntime() {
-      const defaultBlueprint = generateBlueprintFromRequirement(DEFAULT_REQUIREMENT)
-
-      await storage.saveBlueprint(defaultBlueprint)
-      await storage.setActiveBlueprint(defaultBlueprint.id)
-      await initializeProjectRegistry(storage)
-      setBlueprint(defaultBlueprint)
+      await initializeProjectAuditDemo(storage)
+      setBlueprint(await storage.getActiveBlueprint())
       await refreshRuntimeState()
     }
 
@@ -224,10 +254,42 @@ function App() {
   }
 
   async function handleUpdateAuditScope(cycleId: string, projectIds: string[]) {
-    const cycle = await updateAuditScope(storage, cycleId, projectIds)
+    try {
+      const cycle = await updateAuditScope(storage, cycleId, projectIds)
 
-    await refreshRuntimeState()
-    setMessage(`已更新 ${cycle.name} 的审计范围`)
+      await refreshRuntimeState()
+      setMessage(`已更新 ${cycle.name} 的审计范围`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '更新审计范围失败')
+    }
+  }
+
+  async function handleAddProjectsToStartedAuditCycle(
+    cycleId: string,
+    projectIds: string[],
+  ) {
+    try {
+      const result = await addProjectsToStartedAuditCycle(storage, cycleId, projectIds)
+
+      await refreshRuntimeState()
+      setMessage(`已追加 ${result.instances.length} 个项目并生成审计实例`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '追加项目失败')
+    }
+  }
+
+  async function handleRemoveProjectsFromStartedAuditCycle(
+    cycleId: string,
+    projectIds: string[],
+  ) {
+    try {
+      const cycle = await removeProjectsFromStartedAuditCycle(storage, cycleId, projectIds)
+
+      await refreshRuntimeState()
+      setMessage(`已更新 ${cycle.name} 的启动后审计范围`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '移除项目失败')
+    }
   }
 
   async function handleStartAuditCycle(cycleId: string) {
@@ -239,6 +301,32 @@ function App() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '启动审计周期失败')
     }
+  }
+
+  async function handleCloseAuditCycle(cycleId: string) {
+    try {
+      const cycle = await closeAuditCycle(storage, cycleId)
+
+      await refreshRuntimeState()
+      setMessage(`已关闭 ${cycle.name}，不能再追加项目或生成新实例`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '关闭审计周期失败')
+    }
+  }
+
+  async function handleResetDemoData() {
+    if (!resetConfirmArmed) {
+      setResetConfirmArmed(true)
+      setMessage('再次点击“确认重置”会清空当前演示数据，并恢复初始 Blueprint 和 3 个示例项目。')
+      return
+    }
+
+    await resetProjectAuditDemoData(storage)
+    setBlueprint(await storage.getActiveBlueprint())
+    await refreshRuntimeState()
+    setResetConfirmArmed(false)
+    setDemoResetRevision((revision) => revision + 1)
+    setMessage('演示数据已重置：Blueprint 和 3 个示例项目已恢复，周期和实例已清空。')
   }
 
   async function handleSaveAuditForm(
@@ -411,7 +499,7 @@ function App() {
 
   function renderActiveView() {
     if (activeView === 'project-audit-blueprint') {
-      return <ProjectAuditBlueprintConsole storage={storage} />
+      return <ProjectAuditBlueprintConsole key={demoResetRevision} storage={storage} />
     }
 
     if (!blueprint || !activeConsoleView) {
@@ -448,12 +536,15 @@ function App() {
           approvalRecords={approvalRecords}
           message={message}
           onCreate={handleCreateAuditCycle}
+          onAddProjectsToStartedCycle={handleAddProjectsToStartedAuditCycle}
           onApproveOwnerSelfApproval={handleApproveProjectOwnerSelfApproval}
           onApproveAiCeo={handleApproveAiCeoProjectAuditInstance}
           onApproveVp={handleApproveVpProjectAuditInstance}
+          onClose={handleCloseAuditCycle}
           onGenerateAiCeoAssessment={handleGenerateAiCeoAssessment}
           onRejectAiCeo={handleRejectAiCeoProjectAuditInstance}
           onRejectVp={handleRejectVpProjectAuditInstance}
+          onRemoveProjectsFromStartedCycle={handleRemoveProjectsFromStartedAuditCycle}
           onSubmitProjectAuditInstance={handleSubmitProjectAuditInstance}
           onSaveAuditForm={handleSaveAuditForm}
           onStart={handleStartAuditCycle}
@@ -625,6 +716,13 @@ function App() {
             ))}
           </div>
         ) : null}
+        <button
+          className={resetConfirmArmed ? 'danger-action' : ''}
+          onClick={() => void handleResetDemoData()}
+          type="button"
+        >
+          {resetConfirmArmed ? '确认重置' : '重置演示数据'}
+        </button>
       </header>
 
         {renderActiveView()}
@@ -794,12 +892,15 @@ function AuditCyclesPanel({
   projectAuditInstances,
   message,
   onCreate,
+  onAddProjectsToStartedCycle,
   onApproveOwnerSelfApproval,
   onApproveAiCeo,
   onApproveVp,
+  onClose,
   onGenerateAiCeoAssessment,
   onRejectAiCeo,
   onRejectVp,
+  onRemoveProjectsFromStartedCycle,
   onSaveAuditForm,
   onStart,
   onSubmitProjectAuditInstance,
@@ -815,6 +916,10 @@ function AuditCyclesPanel({
   projectAuditInstances: ProjectAuditInstance[]
   message: string
   onCreate: (input: { name: string; startDate: string; endDate: string }) => Promise<void>
+  onAddProjectsToStartedCycle: (
+    cycleId: string,
+    projectIds: string[],
+  ) => Promise<void>
   onApproveOwnerSelfApproval: (
     instanceId: string,
     actor: ProjectAuditActor,
@@ -829,6 +934,7 @@ function AuditCyclesPanel({
     actor: ProjectAuditActor,
     comment: string,
   ) => Promise<void>
+  onClose: (cycleId: string) => Promise<void>
   onGenerateAiCeoAssessment: (instanceId: string) => Promise<void>
   onRejectAiCeo: (
     instanceId: string,
@@ -839,6 +945,10 @@ function AuditCyclesPanel({
     instanceId: string,
     actor: ProjectAuditActor,
     comment: string,
+  ) => Promise<void>
+  onRemoveProjectsFromStartedCycle: (
+    cycleId: string,
+    projectIds: string[],
   ) => Promise<void>
   onSaveAuditForm: (
     instanceId: string,
@@ -871,6 +981,17 @@ function AuditCyclesPanel({
   }
 
   function toggleProject(cycle: AuditCycle, projectId: string, checked: boolean) {
+    if (cycle.status === 'closed') {
+      return
+    }
+
+    if (cycle.status === 'started') {
+      void (checked
+        ? onAddProjectsToStartedCycle(cycle.id, [projectId])
+        : onRemoveProjectsFromStartedCycle(cycle.id, [projectId]))
+      return
+    }
+
     const projectIds = checked
       ? [...cycle.projectIds, projectId]
       : cycle.projectIds.filter((candidate) => candidate !== projectId)
@@ -900,14 +1021,21 @@ function AuditCyclesPanel({
                 <h2>{cycle.name}</h2>
                 <p>{cycle.startDate} 至 {cycle.endDate}</p>
               </div>
-              <span className="status-badge">{cycle.status === 'draft' ? '草稿' : cycle.status}</span>
+              <span className="status-badge">{AUDIT_CYCLE_STATUS_LABELS[cycle.status]}</span>
             </div>
-            <p className="view-description">选择本周期需要审计的项目：</p>
+            <p className="view-description">
+              {cycle.status === 'draft'
+                ? '选择本周期需要审计的项目，启动时会为每个项目生成实例。'
+                : cycle.status === 'started'
+                  ? '周期已启动：勾选新项目会立即生成实例；已开始填写的项目不能移除。'
+                  : '周期已关闭：不能继续追加项目或生成实例。'}
+            </p>
             <div className="scope-options">
               {projects.map((project) => (
                 <label key={project.id}>
                   <input
                     checked={cycle.projectIds.includes(project.id)}
+                    disabled={cycle.status === 'closed'}
                     onChange={(event) => toggleProject(cycle, project.id, event.target.checked)}
                     type="checkbox"
                   />
@@ -925,6 +1053,15 @@ function AuditCyclesPanel({
                   type="button"
                 >
                   启动周期
+                </button>
+              ) : null}
+              {cycle.status === 'started' ? (
+                <button
+                  className="primary-action"
+                  onClick={() => void onClose(cycle.id)}
+                  type="button"
+                >
+                  关闭周期
                 </button>
               ) : null}
             </div>
@@ -1272,7 +1409,7 @@ function ProjectAuditInstanceRuntimePanel({
                   {selectedApprovalRecords.length ? (
                     selectedApprovalRecords.map((record) => (
                       <article key={record.id}>
-                        <strong>{record.decision === 'approved' ? '自审批通过' : '撤回'}</strong>
+                        <strong>{APPROVAL_RECORD_LABELS[record.roleId][record.decision]}</strong>
                         <span>{record.actor} · {formatActivityTime(record.decidedAt)}</span>
                         <p>{PROJECT_AUDIT_STATUS_LABELS[record.fromStatus]} → {PROJECT_AUDIT_STATUS_LABELS[record.toStatus]}</p>
                         {record.comment ? <p>{record.comment}</p> : null}
