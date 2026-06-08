@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { runApproveCurrentStep, runRejectCurrentStep, type AgentActivity } from './core/agent-activity'
 import type { WorkflowInstance } from './core/workflow'
@@ -9,6 +9,7 @@ import type { ApprovalRole } from './core/approval-routing'
 import type { RequestData, RequestInstance } from './core/request'
 import { generateReportFromRuntimeStorage, type ReportSnapshot } from './core/report'
 import { getFrameworkConsoleViews, type ConsoleView, type ConsoleViewId } from './core/console'
+import { ProjectAuditBlueprintConsole } from './ProjectAuditBlueprintConsole'
 import './App.css'
 
 const DEFAULT_REQUIREMENT = 'I need a procurement approval workflow.'
@@ -28,6 +29,8 @@ const INITIAL_FORM_DATA: RequestData = {
   reason: 'Run a security audit before the next enterprise customer launch.',
 }
 
+type AppViewId = 'project-audit-blueprint' | ConsoleViewId
+
 function App() {
   const storage = useMemo(() => new LocalStorageAdapter(), [])
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null)
@@ -38,13 +41,27 @@ function App() {
   const [reports, setReports] = useState<ReportSnapshot[]>([])
   const [latestResult, setLatestResult] = useState<RuntimeSubmissionResult | null>(null)
   const [selectedRole, setSelectedRole] = useState<ApprovalRole>('department_manager')
-  const [activeView, setActiveView] = useState<ConsoleViewId>('runtime')
+  const [activeView, setActiveView] = useState<AppViewId>('project-audit-blueprint')
   const [message, setMessage] = useState('Runtime ready')
   const consoleViews = useMemo(
     () => (blueprint ? getFrameworkConsoleViews(blueprint) : []),
     [blueprint],
   )
   const activeConsoleView = consoleViews.find((view) => view.id === activeView)
+
+  const refreshRuntimeState = useCallback(async () => {
+    const [nextRequests, nextWorkflows, nextAgentActivities, nextReports] = await Promise.all([
+      storage.getRequestInstances(),
+      storage.getWorkflowInstances(),
+      storage.getAgentActivities(),
+      storage.getReportSnapshots(),
+    ])
+
+    setRequests(nextRequests)
+    setWorkflows(nextWorkflows)
+    setAgentActivities(nextAgentActivities)
+    setReports(nextReports)
+  }, [storage])
 
   useEffect(() => {
     async function initializeRuntime() {
@@ -57,7 +74,7 @@ function App() {
     }
 
     void initializeRuntime()
-  }, [storage])
+  }, [refreshRuntimeState, storage])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -93,20 +110,6 @@ function App() {
     setMessage(`${ROLE_LABELS[selectedRole]} ${decision === 'approve' ? 'approved' : 'rejected'} ${workflow.requestId}`)
   }
 
-  async function refreshRuntimeState() {
-    const [nextRequests, nextWorkflows, nextAgentActivities, nextReports] = await Promise.all([
-      storage.getRequestInstances(),
-      storage.getWorkflowInstances(),
-      storage.getAgentActivities(),
-      storage.getReportSnapshots(),
-    ])
-
-    setRequests(nextRequests)
-    setWorkflows(nextWorkflows)
-    setAgentActivities(nextAgentActivities)
-    setReports(nextReports)
-  }
-
   function updateField(field: FormField, value: string) {
     setFormData((current) => ({
       ...current,
@@ -115,6 +118,10 @@ function App() {
   }
 
   function renderActiveView() {
+    if (activeView === 'project-audit-blueprint') {
+      return <ProjectAuditBlueprintConsole storage={storage} />
+    }
+
     if (!blueprint || !activeConsoleView) {
       return (
         <section className="panel">
@@ -245,6 +252,13 @@ function App() {
           <h1>控制台</h1>
         </div>
         <nav aria-label="Console views">
+          <button
+            className={activeView === 'project-audit-blueprint' ? 'active' : ''}
+            onClick={() => setActiveView('project-audit-blueprint')}
+            type="button"
+          >
+            项目审计蓝图
+          </button>
           {consoleViews.map((view) => (
             <button
               className={activeView === view.id ? 'active' : ''}
@@ -262,7 +276,11 @@ function App() {
       <header className="runtime-header">
         <div>
           <p className="eyebrow">AI Enterprise Operating Framework Console</p>
-          <h1>{activeConsoleView?.title ?? 'Runtime'}</h1>
+          <h1>
+            {activeView === 'project-audit-blueprint'
+              ? '项目审计自动配置'
+              : (activeConsoleView?.title ?? 'Runtime')}
+          </h1>
         </div>
         {activeView === 'runtime' ? (
           <div className="role-switcher" aria-label="Role switcher">
