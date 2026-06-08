@@ -1072,6 +1072,40 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.project-audit-role-switcher,
+.audit-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.project-audit-role-switcher button.active {
+  border-color: #172033;
+  background: #172033;
+  color: #ffffff;
+}
+
+.audit-action-bar {
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+
+.audit-action-bar span {
+  margin-left: auto;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.audit-action-bar button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .audit-runtime-layout {
   display: grid;
   grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);

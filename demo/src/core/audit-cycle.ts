@@ -64,7 +64,13 @@ export type ProjectAuditFormData = {
   ownerSummary: string
 }
 
-export type ProjectAuditInstanceStatus = 'draft'
+export type ProjectAuditInstanceStatus =
+  | 'draft'
+  | 'owner_self_approval'
+  | 'vp_approval'
+  | 'ai_ceo_approval'
+  | 'rework'
+  | 'approved'
 
 export type ProjectAuditInstance = {
   id: string
