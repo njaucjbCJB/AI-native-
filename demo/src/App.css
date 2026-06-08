@@ -420,6 +420,157 @@ button.active,
   margin: 18px;
 }
 
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.85fr) minmax(460px, 1.4fr);
+  gap: 18px;
+  padding: 18px;
+  max-width: 1380px;
+  margin: 0 auto;
+}
+
+.admin-form {
+  align-self: start;
+}
+
+.compact-form {
+  position: sticky;
+  top: 18px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form-actions .primary-action {
+  flex: 1;
+  width: auto;
+}
+
+.project-list,
+.cycle-list {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+}
+
+.project-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.project-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.project-card h3 {
+  margin: 3px 0 0;
+  color: #172033;
+  font-size: 18px;
+}
+
+.project-card span,
+.cycle-card p,
+.scope-summary {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.project-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.project-card dl > div {
+  border-radius: 6px;
+  padding: 9px 10px;
+  background: #f8fafc;
+}
+
+.project-card dt {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.project-card dd {
+  margin: 2px 0 0;
+  color: #334155;
+  font-size: 13px;
+}
+
+.project-card p {
+  margin: 0 0 10px;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cycle-card .panel-heading {
+  align-items: flex-start;
+}
+
+.cycle-card .panel-heading p {
+  margin-top: 5px;
+}
+
+.status-badge {
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #eff6ff;
+  color: #1d4ed8 !important;
+  font-weight: 700;
+}
+
+.scope-options {
+  display: grid;
+  gap: 8px;
+}
+
+.scope-options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.scope-options input {
+  width: auto;
+  margin: 0;
+}
+
+.scope-options span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.scope-options strong {
+  display: block;
+  color: #334155;
+  font-size: 14px;
+}
+
+.scope-summary {
+  margin-top: 12px;
+}
+
 .view-description {
   max-width: 760px;
   margin: 0 0 16px;
@@ -746,7 +897,9 @@ textarea {
 
   .runtime-grid,
   .summary-row,
-  .blueprint-console {
+  .blueprint-console,
+  .admin-grid,
+  .audit-workflow li {
     grid-template-columns: 1fr;
   }
 
@@ -754,7 +907,12 @@ textarea {
     grid-column: auto;
   }
 
-  .audit-workflow li {
+  .compact-form {
+    position: static;
+  }
+
+  .form-grid,
+  .project-card dl {
     grid-template-columns: 1fr;
   }
 

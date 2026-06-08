@@ -2,6 +2,8 @@ import type { Blueprint } from './blueprint'
 
 export type ConsoleViewId =
   | 'blueprints'
+  | 'project-registry'
+  | 'audit-cycles'
   | 'data-model'
   | 'form-schema'
   | 'workflow'
@@ -28,6 +30,18 @@ export function getFrameworkConsoleViews(blueprint: Blueprint): ConsoleView[] {
         blueprint.description,
         `Archive policy: ${blueprint.archivePolicy.retentionLabel}`,
       ],
+    },
+    {
+      id: 'project-registry',
+      title: '项目台账',
+      description: '维护当前正式项目资料，供后续审计实例复制项目快照。',
+      items: ['查看项目', '新增项目', '编辑项目'],
+    },
+    {
+      id: 'audit-cycles',
+      title: '审计周期',
+      description: '创建草稿审计周期，并从项目台账选择本期审计范围。',
+      items: ['创建草稿周期', '选择多个项目', '查看审计范围'],
     },
     {
       id: 'data-model',
