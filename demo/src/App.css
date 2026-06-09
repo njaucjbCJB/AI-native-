@@ -702,6 +702,79 @@ button.active,
   top: 18px;
 }
 
+.audit-cycles-workspace {
+  display: grid;
+  gap: 14px;
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 18px;
+}
+
+.cycle-creator-card {
+  padding-bottom: 12px;
+}
+
+.cycle-creator-card .panel-heading {
+  margin-bottom: 10px;
+}
+
+.cycle-creator-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 12px;
+}
+
+.cycle-creator-summary h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.cycle-creator-summary p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.cycle-creator-summary button {
+  flex: 0 0 auto;
+}
+
+.cycle-creator-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) minmax(160px, 0.7fr) minmax(160px, 0.7fr) minmax(180px, 0.55fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.cycle-creator-grid .field {
+  margin-bottom: 0;
+}
+
+.cycle-creator-grid .primary-action {
+  min-height: 42px;
+  margin-top: 0;
+}
+
+.audit-cycles-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.55fr) minmax(620px, 1.45fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.audit-cycles-layout .cycle-list {
+  max-height: calc(100vh - 235px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.audit-cycles-layout .audit-runtime-panel {
+  grid-column: auto;
+  min-width: 0;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1457,6 +1530,8 @@ textarea {
   .summary-row,
   .blueprint-console,
   .admin-grid,
+  .audit-cycles-layout,
+  .cycle-creator-grid,
   .audit-runtime-layout,
   .snapshot-strip,
   .audit-workflow li {
@@ -1469,6 +1544,12 @@ textarea {
 
   .compact-form {
     position: static;
+  }
+
+  .audit-cycles-layout .cycle-list {
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
   }
 
   .form-grid,

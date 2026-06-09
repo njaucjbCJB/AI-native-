@@ -971,6 +971,8 @@ function AuditCyclesPanel({
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false)
+  const shouldShowCreateForm = auditCycles.length === 0 || isCreateFormOpen
 
   async function submitCycle(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -978,6 +980,7 @@ function AuditCyclesPanel({
     setName('')
     setStartDate('')
     setEndDate('')
+    setIsCreateFormOpen(false)
   }
 
   function toggleProject(cycle: AuditCycle, projectId: string, checked: boolean) {
@@ -1000,95 +1003,111 @@ function AuditCyclesPanel({
   }
 
   return (
-    <section className="admin-grid">
-      <form className="panel admin-form compact-form" onSubmit={(event) => void submitCycle(event)}>
-        <div className="panel-heading">
-          <h2>创建审计周期</h2>
-          <span>初始状态：草稿</span>
-        </div>
-        <TextField label="周期名称" required value={name} onChange={setName} />
-        <TextField label="开始日期" required type="date" value={startDate} onChange={setStartDate} />
-        <TextField label="结束日期" required type="date" value={endDate} onChange={setEndDate} />
-        <button className="primary-action" type="submit">创建草稿周期</button>
-        <p className="status-message">{message}</p>
-      </form>
+    <section className="audit-cycles-workspace">
+      {shouldShowCreateForm ? (
+        <form className="panel cycle-creator-card" onSubmit={(event) => void submitCycle(event)}>
+          <div className="panel-heading">
+            <h2>创建审计周期</h2>
+            <span>初始状态：草稿</span>
+          </div>
+          <div className="cycle-creator-grid">
+            <TextField label="周期名称" required value={name} onChange={setName} />
+            <TextField label="开始日期" required type="date" value={startDate} onChange={setStartDate} />
+            <TextField label="结束日期" required type="date" value={endDate} onChange={setEndDate} />
+            <button className="primary-action" type="submit">创建草稿周期</button>
+          </div>
+          <p className="status-message">{message}</p>
+        </form>
+      ) : (
+        <section className="panel cycle-creator-summary">
+          <div>
+            <h2>审计周期</h2>
+            <p>{message}</p>
+          </div>
+          <button type="button" onClick={() => setIsCreateFormOpen(true)}>
+            新建周期
+          </button>
+        </section>
+      )}
 
-      <section className="cycle-list">
-        {auditCycles.length ? auditCycles.map((cycle) => (
-          <article className="panel cycle-card" key={cycle.id}>
-            <div className="panel-heading">
-              <div>
-                <h2>{cycle.name}</h2>
-                <p>{cycle.startDate} 至 {cycle.endDate}</p>
+      <div className="audit-cycles-layout">
+        <section className="cycle-list">
+          {auditCycles.length ? auditCycles.map((cycle) => (
+            <article className="panel cycle-card" key={cycle.id}>
+              <div className="panel-heading">
+                <div>
+                  <h2>{cycle.name}</h2>
+                  <p>{cycle.startDate} 至 {cycle.endDate}</p>
+                </div>
+                <span className="status-badge">{AUDIT_CYCLE_STATUS_LABELS[cycle.status]}</span>
               </div>
-              <span className="status-badge">{AUDIT_CYCLE_STATUS_LABELS[cycle.status]}</span>
-            </div>
-            <p className="view-description">
-              {cycle.status === 'draft'
-                ? '选择本周期需要审计的项目，启动时会为每个项目生成实例。'
-                : cycle.status === 'started'
-                  ? '周期已启动：勾选新项目会立即生成实例；已开始填写的项目不能移除。'
-                  : '周期已关闭：不能继续追加项目或生成实例。'}
-            </p>
-            <div className="scope-options">
-              {projects.map((project) => (
-                <label key={project.id}>
-                  <input
-                    checked={cycle.projectIds.includes(project.id)}
-                    disabled={cycle.status === 'closed'}
-                    onChange={(event) => toggleProject(cycle, project.id, event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span><strong>{project.name}</strong>{project.code} · {project.owner}</span>
-                </label>
-              ))}
-            </div>
-            <div className="form-actions">
-              <p className="scope-summary">已选择 {cycle.projectIds.length} 个项目</p>
-              {cycle.status === 'draft' ? (
-                <button
-                  className="primary-action"
-                  disabled={cycle.projectIds.length === 0}
-                  onClick={() => void onStart(cycle.id)}
-                  type="button"
-                >
-                  启动周期
-                </button>
-              ) : null}
-              {cycle.status === 'started' ? (
-                <button
-                  className="primary-action"
-                  onClick={() => void onClose(cycle.id)}
-                  type="button"
-                >
-                  关闭周期
-                </button>
-              ) : null}
-            </div>
-          </article>
-        )) : (
-          <section className="panel">
-            <p className="empty-state">尚无审计周期。先创建一个草稿周期，再选择审计范围。</p>
-          </section>
-        )}
-      </section>
-      <ProjectAuditInstanceRuntimePanel
-        auditChangeRecords={auditChangeRecords}
-        aiCeoAssessments={aiCeoAssessments}
-        approvalRecords={approvalRecords}
-        instances={projectAuditInstances}
-        onApproveOwnerSelfApproval={onApproveOwnerSelfApproval}
-        onApproveAiCeo={onApproveAiCeo}
-        onApproveVp={onApproveVp}
-        onGenerateAiCeoAssessment={onGenerateAiCeoAssessment}
-        onRejectAiCeo={onRejectAiCeo}
-        onRejectVp={onRejectVp}
-        onSaveAuditForm={onSaveAuditForm}
-        onSubmitProjectAuditInstance={onSubmitProjectAuditInstance}
-        onWithdrawProjectAuditInstance={onWithdrawProjectAuditInstance}
-        projects={projects}
-        storage={storage}
-      />
+              <p className="view-description">
+                {cycle.status === 'draft'
+                  ? '选择本周期需要审计的项目，启动时会为每个项目生成实例。'
+                  : cycle.status === 'started'
+                    ? '周期已启动：勾选新项目会立即生成实例；已开始填写的项目不能移除。'
+                    : '周期已关闭：不能继续追加项目或生成实例。'}
+              </p>
+              <div className="scope-options">
+                {projects.map((project) => (
+                  <label key={project.id}>
+                    <input
+                      checked={cycle.projectIds.includes(project.id)}
+                      disabled={cycle.status === 'closed'}
+                      onChange={(event) => toggleProject(cycle, project.id, event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span><strong>{project.name}</strong>{project.code} · {project.owner}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="form-actions">
+                <p className="scope-summary">已选择 {cycle.projectIds.length} 个项目</p>
+                {cycle.status === 'draft' ? (
+                  <button
+                    className="primary-action"
+                    disabled={cycle.projectIds.length === 0}
+                    onClick={() => void onStart(cycle.id)}
+                    type="button"
+                  >
+                    启动周期
+                  </button>
+                ) : null}
+                {cycle.status === 'started' ? (
+                  <button
+                    className="primary-action"
+                    onClick={() => void onClose(cycle.id)}
+                    type="button"
+                  >
+                    关闭周期
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          )) : (
+            <section className="panel">
+              <p className="empty-state">尚无审计周期。先创建一个草稿周期，再选择审计范围。</p>
+            </section>
+          )}
+        </section>
+        <ProjectAuditInstanceRuntimePanel
+          auditChangeRecords={auditChangeRecords}
+          aiCeoAssessments={aiCeoAssessments}
+          approvalRecords={approvalRecords}
+          instances={projectAuditInstances}
+          onApproveOwnerSelfApproval={onApproveOwnerSelfApproval}
+          onApproveAiCeo={onApproveAiCeo}
+          onApproveVp={onApproveVp}
+          onGenerateAiCeoAssessment={onGenerateAiCeoAssessment}
+          onRejectAiCeo={onRejectAiCeo}
+          onRejectVp={onRejectVp}
+          onSaveAuditForm={onSaveAuditForm}
+          onSubmitProjectAuditInstance={onSubmitProjectAuditInstance}
+          onWithdrawProjectAuditInstance={onWithdrawProjectAuditInstance}
+          projects={projects}
+          storage={storage}
+        />
+      </div>
     </section>
   )
 }
