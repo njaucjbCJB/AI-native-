@@ -64,7 +64,7 @@
   <rect class="card rose" x="1330" y="195" width="190" height="118"/>
   <text class="node-title" x="1355" y="230">阶段 5</text>
   <text class="node-title" x="1355" y="254">产品化平台</text>
-  <text class="node-text" x="1355" y="282">数据库 / 登录 / 多场景 / 真实 AI</text>
+  <text class="node-text" x="1355" y="282">Supabase / 登录 / 多场景 / 真实 AI</text>
 
   <path class="thick" d="M310 254 H365"/>
   <path class="thick" d="M625 254 H680"/>
@@ -130,7 +130,7 @@
 
   <rect class="card amber" x="1310" y="425" width="190" height="75"/>
   <text class="node-title" x="1330" y="455">Skill Runtime</text>
-  <text class="node-text" x="1330" y="479">自动执行 / 工具调用</text>
+  <text class="node-text" x="1330" y="479">Simple / LangGraph / External</text>
 
   <rect class="card purple" x="1310" y="535" width="190" height="75"/>
   <text class="node-title" x="1330" y="565">Workflow Runtime</text>
@@ -142,7 +142,7 @@
 
   <rect class="card blue" x="830" y="625" width="150" height="70"/>
   <text class="node-title" x="850" y="655">Data Layer</text>
-  <text class="node-text" x="850" y="679">数据库 / 证据 / 报表</text>
+  <text class="node-text" x="850" y="679">Supabase Postgres / RLS</text>
 
   <path class="ink" d="M980 510 H1030"/>
   <path class="ink" d="M1250 496 H1300"/>
@@ -151,7 +151,7 @@
   <path class="ink" d="M1405 610 C1405 675 1260 680 1260 680"/>
   <path class="ink" d="M1040 660 H990"/>
   <path class="dash" d="M905 625 V560"/>
-  <text class="tiny" x="830" y="712">替换路线：LocalStorage → 数据库；Mock AI → Agent Runtime；轻量流程 → 生产级 Workflow 引擎。</text>
+  <text class="tiny" x="830" y="712">替换路线：LocalStorage → Supabase Postgres；复杂 Skill → LangGraph；轻量流程 → Temporal。</text>
 
   <!-- 4. Program architecture -->
   <rect class="panel" x="50" y="755" width="1500" height="305"/>
@@ -179,13 +179,13 @@
   <text class="node-title" x="945" y="862">AI / Skill Core</text>
   <text class="node-text" x="945" y="892">ai-ceo-assessment</text>
   <text class="node-text" x="945" y="916">agent-activity</text>
-  <text class="node-text" x="945" y="940">未来：task-routing / skill-runtime</text>
+  <text class="node-text" x="945" y="940">未来：task-routing / LangGraph skill</text>
 
   <rect class="card rose" x="1210" y="830" width="260" height="150"/>
   <text class="node-title" x="1235" y="862">Storage / Evidence</text>
   <text class="node-text" x="1235" y="892">storage adapter</text>
   <text class="node-text" x="1235" y="916">approval / change / report records</text>
-  <text class="node-text" x="1235" y="940">未来：business instance store</text>
+  <text class="node-text" x="1235" y="940">未来：Supabase / business instance</text>
 
   <path class="thick" d="M285 905 H330"/>
   <path class="thick" d="M575 905 H620"/>
