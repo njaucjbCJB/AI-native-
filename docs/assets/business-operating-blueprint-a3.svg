@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1131" viewBox="0 0 1600 1131">
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .title { font: 800 38px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #101828; }
+      .subtitle { font: 500 17px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #475467; }
+      .section-title { font: 800 24px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #101828; }
+      .node-title { font: 750 18px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #101828; }
+      .node-text { font: 500 13px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #475467; }
+      .tiny { font: 600 12px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #667085; }
+      .badge { font: 750 12px -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #175cd3; }
+      .card { fill: #ffffff; stroke: #d0d5dd; stroke-width: 1.5; rx: 16; }
+      .panel { fill: #ffffff; stroke: #d0d5dd; stroke-width: 1.5; rx: 22; }
+      .blue { fill: #eff6ff; stroke: #84c5ff; }
+      .green { fill: #ecfdf3; stroke: #75e0a7; }
+      .amber { fill: #fffaeb; stroke: #fdb022; }
+      .purple { fill: #f4f3ff; stroke: #bdb4fe; }
+      .rose { fill: #fff1f3; stroke: #fda4af; }
+      .ink { stroke: #344054; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #98a2b3; stroke-width: 2; fill: none; stroke-dasharray: 7 6; marker-end: url(#arrowGrey); }
+      .thick { stroke: #175cd3; stroke-width: 3; fill: none; marker-end: url(#arrowBlue); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#344054"/>
+    </marker>
+    <marker id="arrowGrey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#98a2b3"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#175cd3"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1600" height="1131"/>
+
+  <text class="title" x="60" y="66">AI-native 企业业务运行框架 · A3 规划蓝图</text>
+  <text class="subtitle" x="60" y="98">Business Operating Blueprint 作为唯一中心契约：业务目标 → 分发 → 执行 / 协同 → AI 验收 → 数据沉淀 → 报表与审计</text>
+  <text class="badge" x="1322" y="66">未开发蓝图 / Product Architecture Draft</text>
+
+  <!-- 1. Project planning blueprint -->
+  <rect class="panel" x="50" y="130" width="1500" height="235"/>
+  <text class="section-title" x="80" y="168">1. 整个项目的规划蓝图：从项目审计验证，演进到企业业务运行平台</text>
+
+  <rect class="card blue" x="80" y="195" width="230" height="118"/>
+  <text class="node-title" x="105" y="230">阶段 1</text>
+  <text class="node-title" x="105" y="254">项目审计闭环</text>
+  <text class="node-text" x="105" y="282">动态表单 / 角色权限 / VP 与 AI CEO 审批</text>
+
+  <rect class="card green" x="375" y="195" width="250" height="118"/>
+  <text class="node-title" x="400" y="230">阶段 2</text>
+  <text class="node-title" x="400" y="254">业务目标入口</text>
+  <text class="node-text" x="400" y="282">非结构化目标进入 Task Routing Skill</text>
+
+  <rect class="card amber" x="690" y="195" width="270" height="118"/>
+  <text class="node-title" x="715" y="230">阶段 3</text>
+  <text class="node-title" x="715" y="254">双路径执行</text>
+  <text class="node-text" x="715" y="282">自动 Skill 执行 + 人工协同 Workflow</text>
+
+  <rect class="card purple" x="1025" y="195" width="245" height="118"/>
+  <text class="node-title" x="1050" y="230">阶段 4</text>
+  <text class="node-title" x="1050" y="254">AI 验收与审计</text>
+  <text class="node-text" x="1050" y="282">Acceptance Module 形成可解释证据</text>
+
+  <rect class="card rose" x="1330" y="195" width="190" height="118"/>
+  <text class="node-title" x="1355" y="230">阶段 5</text>
+  <text class="node-title" x="1355" y="254">产品化平台</text>
+  <text class="node-text" x="1355" y="282">数据库 / 登录 / 多场景 / 真实 AI</text>
+
+  <path class="thick" d="M310 254 H365"/>
+  <path class="thick" d="M625 254 H680"/>
+  <path class="thick" d="M960 254 H1015"/>
+  <path class="thick" d="M1270 254 H1320"/>
+  <text class="tiny" x="80" y="342">产品定位：不是低代码表单工具，而是让 AI 与人围绕同一业务上下文完成企业事务的运行框架。</text>
+
+  <!-- 2. Business architecture -->
+  <rect class="panel" x="50" y="395" width="715" height="330"/>
+  <text class="section-title" x="80" y="433">2. 关键业务架构：业务目标分发与执行闭环</text>
+
+  <rect class="card blue" x="88" y="468" width="160" height="72"/>
+  <text class="node-title" x="108" y="498">业务目标</text>
+  <text class="node-text" x="108" y="522">自然语言项目事务</text>
+
+  <rect class="card green" x="295" y="468" width="180" height="72"/>
+  <text class="node-title" x="315" y="498">Task Routing Skill</text>
+  <text class="node-text" x="315" y="522">判断执行路径和理由</text>
+
+  <rect class="card amber" x="535" y="435" width="185" height="72"/>
+  <text class="node-title" x="555" y="465">自动执行</text>
+  <text class="node-text" x="555" y="489">Skill 直接完成</text>
+
+  <rect class="card purple" x="535" y="525" width="185" height="72"/>
+  <text class="node-title" x="555" y="555">协同流程</text>
+  <text class="node-text" x="555" y="579">表单 / 人工任务 / 审批</text>
+
+  <rect class="card rose" x="535" y="615" width="185" height="72"/>
+  <text class="node-title" x="555" y="645">混合路径</text>
+  <text class="node-text" x="555" y="669">AI 预处理 + 人确认</text>
+
+  <rect class="card green" x="295" y="625" width="180" height="72"/>
+  <text class="node-title" x="315" y="655">AI 验收</text>
+  <text class="node-text" x="315" y="679">passed / review / failed</text>
+
+  <rect class="card blue" x="88" y="625" width="160" height="72"/>
+  <text class="node-title" x="108" y="655">业务实例</text>
+  <text class="node-text" x="108" y="679">交付物 + 过程 + 证据</text>
+
+  <path class="ink" d="M248 504 H285"/>
+  <path class="ink" d="M475 504 C500 504 505 471 525 471"/>
+  <path class="ink" d="M475 504 H525"/>
+  <path class="ink" d="M475 504 C500 504 505 651 525 651"/>
+  <path class="ink" d="M535 471 C500 471 500 645 485 645"/>
+  <path class="ink" d="M535 561 C500 561 500 661 485 661"/>
+  <path class="ink" d="M535 651 H485"/>
+  <path class="ink" d="M295 661 H258"/>
+  <text class="tiny" x="88" y="712">原则：表单不是入口；所有路径都要沉淀业务实例、验收结果和审计证据。</text>
+
+  <!-- 3. Technical architecture -->
+  <rect class="panel" x="795" y="395" width="755" height="330"/>
+  <text class="section-title" x="825" y="433">3. 技术架构：Blueprint Engine + Runtime + Data Layer</text>
+
+  <rect class="card blue" x="830" y="470" width="150" height="80"/>
+  <text class="node-title" x="850" y="500">前端工作台</text>
+  <text class="node-text" x="850" y="524">目标输入 / 角色任务</text>
+
+  <rect class="card green" x="1040" y="445" width="210" height="130"/>
+  <text class="node-title" x="1060" y="475">Blueprint Engine</text>
+  <text class="node-text" x="1060" y="502">Intent Parser</text>
+  <text class="node-text" x="1060" y="524">Task Routing Skill</text>
+  <text class="node-text" x="1060" y="546">Version Manager</text>
+
+  <rect class="card amber" x="1310" y="425" width="190" height="75"/>
+  <text class="node-title" x="1330" y="455">Skill Runtime</text>
+  <text class="node-text" x="1330" y="479">自动执行 / 工具调用</text>
+
+  <rect class="card purple" x="1310" y="535" width="190" height="75"/>
+  <text class="node-title" x="1330" y="565">Workflow Runtime</text>
+  <text class="node-text" x="1330" y="589">人工协同 / 审批</text>
+
+  <rect class="card rose" x="1040" y="625" width="210" height="70"/>
+  <text class="node-title" x="1060" y="655">Acceptance Module</text>
+  <text class="node-text" x="1060" y="679">AI 验收 / 异常转人工</text>
+
+  <rect class="card blue" x="830" y="625" width="150" height="70"/>
+  <text class="node-title" x="850" y="655">Data Layer</text>
+  <text class="node-text" x="850" y="679">数据库 / 证据 / 报表</text>
+
+  <path class="ink" d="M980 510 H1030"/>
+  <path class="ink" d="M1250 496 H1300"/>
+  <path class="ink" d="M1250 546 H1300"/>
+  <path class="ink" d="M1405 500 C1405 635 1260 660 1260 660"/>
+  <path class="ink" d="M1405 610 C1405 675 1260 680 1260 680"/>
+  <path class="ink" d="M1040 660 H990"/>
+  <path class="dash" d="M905 625 V560"/>
+  <text class="tiny" x="830" y="712">替换路线：LocalStorage → 数据库；Mock AI → Agent Runtime；轻量流程 → 生产级 Workflow 引擎。</text>
+
+  <!-- 4. Program architecture -->
+  <rect class="panel" x="50" y="755" width="1500" height="305"/>
+  <text class="section-title" x="80" y="793">4. 程序架构：从当前代码模块演进到产品模块</text>
+
+  <rect class="card blue" x="80" y="830" width="205" height="150"/>
+  <text class="node-title" x="105" y="862">UI / Console</text>
+  <text class="node-text" x="105" y="892">App.tsx</text>
+  <text class="node-text" x="105" y="916">ProjectAuditBlueprintConsole</text>
+  <text class="node-text" x="105" y="940">角色工作台 / 证据视图</text>
+
+  <rect class="card green" x="340" y="830" width="235" height="150"/>
+  <text class="node-title" x="365" y="862">Blueprint Core</text>
+  <text class="node-text" x="365" y="892">project-audit-blueprint</text>
+  <text class="node-text" x="365" y="916">blueprint-deployment</text>
+  <text class="node-text" x="365" y="940">未来：business-operating-blueprint</text>
+
+  <rect class="card amber" x="630" y="830" width="235" height="150"/>
+  <text class="node-title" x="655" y="862">Runtime Core</text>
+  <text class="node-text" x="655" y="892">audit-workflow</text>
+  <text class="node-text" x="655" y="916">audit-cycle / audit-form</text>
+  <text class="node-text" x="655" y="940">未来：execution-step runtime</text>
+
+  <rect class="card purple" x="920" y="830" width="235" height="150"/>
+  <text class="node-title" x="945" y="862">AI / Skill Core</text>
+  <text class="node-text" x="945" y="892">ai-ceo-assessment</text>
+  <text class="node-text" x="945" y="916">agent-activity</text>
+  <text class="node-text" x="945" y="940">未来：task-routing / skill-runtime</text>
+
+  <rect class="card rose" x="1210" y="830" width="260" height="150"/>
+  <text class="node-title" x="1235" y="862">Storage / Evidence</text>
+  <text class="node-text" x="1235" y="892">storage adapter</text>
+  <text class="node-text" x="1235" y="916">approval / change / report records</text>
+  <text class="node-text" x="1235" y="940">未来：business instance store</text>
+
+  <path class="thick" d="M285 905 H330"/>
+  <path class="thick" d="M575 905 H620"/>
+  <path class="thick" d="M865 905 H910"/>
+  <path class="thick" d="M1155 905 H1200"/>
+
+  <rect x="80" y="1010" width="1390" height="32" rx="12" fill="#101828"/>
+  <text x="105" y="1032" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="15" font-weight="750" fill="#ffffff">核心竞争力：以业务目标为入口，以业务运行蓝图为唯一契约，让 AI 与人共享数据、规则、Workflow、权限、审计证据，并完成执行与验收闭环。</text>
+</svg>
